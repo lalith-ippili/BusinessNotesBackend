@@ -1,0 +1,461 @@
+from rest_framework import serializers
+from django.contrib.auth import authenticate
+from django.contrib.auth.password_validation import validate_password
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
+from .models import User
+from .models import Task
+from .models import Note
+from .models import Goal
+from .models import DayPlan
+from .tokens import password_reset_token
+from .models import Income, Expense
+from .models import HabitTracker
+from .models import PomodoroTimer
+
+
+
+
+
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, min_length=6)
+    confirm_password = serializers.CharField(write_only=True, min_length=6)
+
+    class Meta:
+        model = User
+        fields = ['id', 'name', 'email', 'image', 'password', 'confirm_password']
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Email already exists.")
+        return value
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({
+                "confirm_password": "Passwords do not match."
+            })
+
+        validate_password(attrs['password'])
+        return attrs
+
+    def create(self, validated_data):
+        validated_data.pop('confirm_password')
+        password = validated_data.pop('password')
+
+        user = User.objects.create_user(
+            password=password,
+            **validated_data
+        )
+        return user
+
+
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        email = attrs.get('email')
+        password = attrs.get('password')
+
+        if not email or not password:
+            raise serializers.ValidationError("Email and password are required.")
+
+        user = authenticate(username=email, password=password)
+
+        if user is None:
+            raise serializers.ValidationError("Invalid email or password.")
+
+        if not user.is_active:
+            raise serializers.ValidationError("User account is inactive.")
+
+        attrs['user'] = user
+        return attrs
+from rest_framework import serializers
+from .models import User
+
+
+class ProfileSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'name',
+            'email',
+            'image',
+            'image_url',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'email', 'created_at', 'updated_at']
+
+    def get_image_url(self, obj):
+        request = self.context.get('request')
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
+        return None
+
+class Meta:
+    model = User
+    fields = ['id', 'name', 'email', 'image', 'image_url', 'created_at', 'updated_at']
+    read_only_fields = ['id', 'email', 'created_at', 'updated_at']
+
+def get_image_url(self, obj):
+    request = self.context.get('request')
+    if obj.image and request:
+        return request.build_absolute_uri(obj.image.url)
+        return None
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+def validate_email(self, value):
+    if not User.objects.filter(email=value).exists():
+        raise serializers.ValidationError("No account found with this email.")
+        return value
+
+class ResetPasswordSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True, min_length=6)
+    confirm_password = serializers.CharField(write_only=True, min_length=6)
+
+def validate(self, attrs):
+    if attrs['new_password'] != attrs['confirm_password']:
+        raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+
+        try:
+            uid = force_str(urlsafe_base64_decode(attrs['uid']))
+            user = User.objects.get(pk=uid)
+        except Exception:
+            raise serializers.ValidationError({"uid": "Invalid user id."})
+
+            if not password_reset_token.check_token(user, attrs['token']):
+                raise serializers.ValidationError({"token": "Invalid or expired token."})
+
+                validate_password(attrs['new_password'])
+                attrs['user'] = user
+                return attrs
+
+
+                # task--
+
+# Task---------------
+
+class TaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = [
+        'id',
+        'title',
+        'description',
+        'status',
+        'priority',
+        'due_date',
+        'category',
+        'is_completed',
+        'created_at',
+        'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+def validate(self, attrs):
+    is_completed = attrs.get('is_completed')
+    status_value = attrs.get('status')
+
+    if is_completed is True and not status_value:
+        attrs['status'] = 'completed'
+
+        if status_value == 'completed' and 'is_completed' not in attrs:
+            attrs['is_completed'] = True
+
+            return attrs
+
+# Notes--------------------
+
+class NoteSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Note
+        fields = [
+            'id',
+            'title',
+            'content',
+            'category',
+            'image',
+            'image_url',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'image_url', 'created_at', 'updated_at']
+
+    def get_image_url(self, obj):
+        request = self.context.get('request')
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
+        return None
+
+# Goals-------------
+
+class GoalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Goal
+        fields = [
+            'id',
+            'title',
+            'description',
+            'category',
+            'target_date',
+            'status',
+            'progress',
+            'is_completed',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_progress(self, value):
+        if value < 0 or value > 100:
+            raise serializers.ValidationError("Progress must be between 0 and 100.")
+        return value
+
+    def validate(self, attrs):
+        progress = attrs.get('progress')
+        is_completed = attrs.get('is_completed')
+        status_value = attrs.get('status')
+
+        if progress == 100:
+            attrs['is_completed'] = True
+            attrs['status'] = 'completed'
+
+        if is_completed is True and progress is None:
+            attrs['progress'] = 100
+            attrs['status'] = 'completed'
+
+        if status_value == 'completed' and progress is None:
+            attrs['progress'] = 100
+            attrs['is_completed'] = True
+
+        return attrs
+
+
+        # dayplan---------------------------------------------------------
+
+# dayplan-------------------------------------------
+
+class DayPlanSerializer(serializers.ModelSerializer):
+    task = serializers.PrimaryKeyRelatedField(
+        queryset=Task.objects.all(),
+        required=False,
+        allow_null=True
+    )
+    task_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DayPlan
+        fields = [
+            'id',
+            'title',
+            'time',
+            'plan_date',
+            'task',
+            'task_details',
+            'notes',
+            'is_done',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'task_details', 'created_at', 'updated_at']
+
+    def get_task_details(self, obj):
+        if obj.task:
+            return {
+                "id": obj.task.id,
+                "title": obj.task.title,
+                "description": obj.task.description,
+                "status": obj.task.status,
+                "priority": obj.task.priority,
+                "due_date": obj.task.due_date,
+                "category": obj.task.category,
+                "is_completed": obj.task.is_completed,
+            }
+        return None
+
+    def validate_task(self, value):
+        request = self.context.get('request')
+        if value and request and value.user != request.user:
+            raise serializers.ValidationError("You can attach only your own task.")
+        return value
+
+
+# HabitTrackerSerializer-----------------------------------
+
+class HabitTrackerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HabitTracker
+        fields = [
+            'id',
+            'name',
+            'icon',
+            'days',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_days(self, value):
+        allowed_days = {
+            'monday', 'tuesday', 'wednesday',
+            'thursday', 'friday', 'saturday', 'sunday'
+        }
+
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Days must be a list.")
+
+        for day in value:
+            if str(day).lower() not in allowed_days:
+                raise serializers.ValidationError(
+                    f"Invalid day: {day}. Use valid weekday names."
+                )
+
+        return [str(day).lower() for day in value]
+
+#PomodoroTimerSerializer-------------------------------
+
+class PomodoroTimerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PomodoroTimer
+        fields = [
+            'id',
+            'title',
+            'work_duration',
+            'break_duration',
+            'long_break_duration',
+            'cycles',
+            'is_active',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_work_duration(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Work duration must be greater than 0.")
+        return value
+
+    def validate_break_duration(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Break duration must be greater than 0.")
+        return value
+
+    def validate_long_break_duration(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Long break duration must be greater than 0.")
+        return value
+
+    def validate_cycles(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Cycles must be greater than 0.")
+        return value
+
+
+#IncomeSerializer------------------------
+
+class IncomeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Income
+        fields = [
+            'id',
+            'name',
+            'amount',
+            'category',
+            'income_type',
+            'due_day_of_month',
+            'start_date',
+            'is_active',
+            'notes',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_due_day_of_month(self, value):
+        if value is not None and (value < 1 or value > 31):
+            raise serializers.ValidationError("Due day of month must be between 1 and 31.")
+        return value
+
+#xpenseSerializer-------------------------
+class ExpenseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Expense
+        fields = [
+            'id',
+            'name',
+            'amount',
+            'category',
+            'expense_type',
+            'due_day_of_month',
+            'expense_date',
+            'is_paid',
+            'notes',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_due_day_of_month(self, value):
+        if value is not None and (value < 1 or value > 31):
+            raise serializers.ValidationError("Due day of month must be between 1 and 31.")
+        return value
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

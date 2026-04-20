@@ -13,3 +13,5 @@ python manage.py migrate
 python manage.py createsuperuser
 
 npm i -g vercel
+
+pip install gunicorn

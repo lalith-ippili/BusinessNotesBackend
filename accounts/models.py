@@ -90,9 +90,13 @@ class Task(models.Model):
 
 class Note(models.Model):
     CATEGORY_CHOICES = (
-        ('personal', 'Personal'),
-        ('work', 'Work'),
         ('business', 'Business'),
+        ('marketing', 'Marketing'),
+        ('finance', 'Finance'),
+        ('projects', 'Projects'),
+        ('hr', 'HR'),
+        ('operations', 'Operations'),
+        ('personal', 'Personal'),
         ('other', 'Other'),
     )
 

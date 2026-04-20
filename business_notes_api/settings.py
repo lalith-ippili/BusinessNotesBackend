@@ -33,7 +33,12 @@ SECRET_KEY = 'django-insecure-l0trsyx8wsvem#m7-!)_0ix_$slip$tm+r#_30mm5f4#9nr!qr
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+
+
+ALLOWED_HOSTS = os.getenv(
+    'ALLOWED_HOSTS',
+    'businessnotesbackend.onrender.com,127.0.0.1,localhost'
+).split(',')
 
 
 # Application definition

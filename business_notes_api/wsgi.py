@@ -14,3 +14,4 @@ from django.core.wsgi import get_wsgi_application
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'business_notes_api.settings')
 
 application = get_wsgi_application()
+application = app

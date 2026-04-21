@@ -477,7 +477,7 @@ class DayPlanListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        day_plans = DayPlan.objects.filter(user=request.user).select_related('task')
+        day_plans = DayPlan.objects.filter(user=request.user).order_by('plan_date', 'time')
         serializer = DayPlanSerializer(day_plans, many=True, context={'request': request})
 
         total_plans = day_plans.count()
@@ -515,7 +515,7 @@ class DayPlanDetailView(APIView):
 
     def get_object(self, request, pk):
         return get_object_or_404(
-            DayPlan.objects.select_related('task'),
+            DayPlan,
             pk=pk,
             user=request.user
         )
@@ -576,8 +576,6 @@ class DayPlanDetailView(APIView):
             "success": True,
             "message": "Day plan deleted successfully."
         }, status=status.HTTP_200_OK)
-
-
 
 # Home dashboard overview-----------------------------
 

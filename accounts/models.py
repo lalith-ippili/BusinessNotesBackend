@@ -111,12 +111,6 @@ class Note(models.Model):
 
 
 class Goal(models.Model):
-    STATUS_CHOICES = (
-        ('not_started', 'Not Started'),
-        ('in_progress', 'In Progress'),
-        ('completed', 'Completed'),
-    )
-
     user = models.ForeignKey(
         'accounts.User',
         on_delete=models.CASCADE,
@@ -126,7 +120,7 @@ class Goal(models.Model):
     description = models.TextField(blank=True, null=True)
     category = models.CharField(max_length=100, blank=True, null=True)  # user input string
     target_date = models.DateField(blank=True, null=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='not_started')
+    status = models.CharField(max_length=100, blank=True, null=True, default='not_started')  # user input string
     progress = models.PositiveIntegerField(default=0)
     is_completed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -140,18 +134,17 @@ class Goal(models.Model):
             self.progress = 100
             self.is_completed = True
             self.status = 'completed'
-        elif 0 < self.progress < 100 and self.status == 'not_started':
-            self.status = 'in_progress'
         elif self.is_completed:
             self.status = 'completed'
             if self.progress < 100:
                 self.progress = 100
+        elif self.progress < 0:
+            self.progress = 0
 
         super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
-
 # dayplan-------------
 
 class DayPlan(models.Model):

@@ -210,9 +210,6 @@ class PomodoroTimer(models.Model):
 
 #Income------------------------------------------------
 
-from django.db import models
-
-
 class Income(models.Model):
     CATEGORY_CHOICES = (
         ('salary', 'Salary'),
@@ -239,10 +236,10 @@ class Income(models.Model):
     category = models.CharField(max_length=30, choices=CATEGORY_CHOICES, default='other')
     income_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='monthly')
 
-    # For daily records, this is the actual entry date
+    # daily entry
     income_date = models.DateField(null=True, blank=True)
 
-    # For recurring monthly/yearly items
+    # recurring entry
     start_date = models.DateField(null=True, blank=True)
     due_day_of_month = models.PositiveSmallIntegerField(null=True, blank=True)
     due_month_of_year = models.PositiveSmallIntegerField(null=True, blank=True)
@@ -258,7 +255,6 @@ class Income(models.Model):
 
     def __str__(self):
         return self.name
-
 
 class Expense(models.Model):
     CATEGORY_CHOICES = (
@@ -290,10 +286,10 @@ class Expense(models.Model):
     category = models.CharField(max_length=30, choices=CATEGORY_CHOICES, default='other')
     expense_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='monthly')
 
-    # For daily records, this is the actual entry date
+    # daily entry
     expense_date = models.DateField(null=True, blank=True)
 
-    # For recurring monthly/yearly items
+    # recurring entry
     start_date = models.DateField(null=True, blank=True)
     due_day_of_month = models.PositiveSmallIntegerField(null=True, blank=True)
     due_month_of_year = models.PositiveSmallIntegerField(null=True, blank=True)
@@ -310,8 +306,6 @@ class Expense(models.Model):
 
     def __str__(self):
         return self.name
-
-
 
 
 

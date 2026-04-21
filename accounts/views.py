@@ -13,6 +13,7 @@ from django.db.models.functions import ExtractMonth, ExtractYear
 from django.utils import timezone
 from collections import defaultdict
 from calendar import monthrange
+from datetime import date
 from django.db.models.functions import ExtractWeek
 
 
@@ -973,73 +974,103 @@ class PomodoroTimerDetailView(APIView):
 
 #IncomeListC-------------------------------------------------
 
+def is_monthly_visible(start_date, selected_year, selected_month):
+    if not start_date:
+        return False
+
+    start_month_date = date(start_date.year, start_date.month, 1)
+    selected_month_date = date(selected_year, selected_month, 1)
+    return start_month_date <= selected_month_date
+
+
+def is_yearly_visible(start_date, due_month_of_year, selected_year, selected_month):
+    if not start_date or not due_month_of_year:
+        return False
+
+    start_month_date = date(start_date.year, start_date.month, 1)
+    selected_month_date = date(selected_year, selected_month, 1)
+
+    return start_month_date <= selected_month_date and due_month_of_year == selected_month
+
+
+def get_visible_income_queryset(user, month, year):
+    incomes = Income.objects.filter(user=user, is_active=True)
+    visible_ids = []
+
+    for income in incomes:
+        if income.income_type == 'daily':
+            if income.income_date and income.income_date.month == month and income.income_date.year == year:
+                visible_ids.append(income.id)
+
+        elif income.income_type == 'monthly':
+            if is_monthly_visible(income.start_date, year, month):
+                visible_ids.append(income.id)
+
+        elif income.income_type == 'yearly':
+            if is_yearly_visible(income.start_date, income.due_month_of_year, year, month):
+                visible_ids.append(income.id)
+
+    return incomes.filter(id__in=visible_ids)
+
+
+def get_visible_expense_queryset(user, month, year):
+    expenses = Expense.objects.filter(user=user, is_active=True)
+    visible_ids = []
+
+    for expense in expenses:
+        if expense.expense_type == 'daily':
+            if expense.expense_date and expense.expense_date.month == month and expense.expense_date.year == year:
+                visible_ids.append(expense.id)
+
+        elif expense.expense_type == 'monthly':
+            if is_monthly_visible(expense.start_date, year, month):
+                visible_ids.append(expense.id)
+
+        elif expense.expense_type == 'yearly':
+            if is_yearly_visible(expense.start_date, expense.due_month_of_year, year, month):
+                visible_ids.append(expense.id)
+
+    return expenses.filter(id__in=visible_ids)
+
 
 class IncomeListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        incomes = Income.objects.filter(user=request.user)
+        today = timezone.localdate()
+        month = int(request.query_params.get('month', today.month))
+        year = int(request.query_params.get('year', today.year))
 
-        month = request.query_params.get('month')
-        year = request.query_params.get('year')
+        incomes = get_visible_income_queryset(request.user, month, year)
+
         income_type = request.query_params.get('income_type')
         category = request.query_params.get('category')
-        is_active = request.query_params.get('is_active')
-        tab = request.query_params.get('tab', 'monthly')  # monthly / daily / yearly
 
         if income_type:
             incomes = incomes.filter(income_type=income_type)
         if category:
             incomes = incomes.filter(category=category)
-        if is_active is not None:
-            if is_active.lower() == 'true':
-                incomes = incomes.filter(is_active=True)
-            elif is_active.lower() == 'false':
-                incomes = incomes.filter(is_active=False)
-
-        if month and year:
-            month = int(month)
-            year = int(year)
-
-            filtered_ids = []
-
-            for income in incomes:
-                if income.income_type == 'daily':
-                    if income.income_date and income.income_date.month == month and income.income_date.year == year:
-                        filtered_ids.append(income.id)
-
-                elif income.income_type == 'monthly':
-                    if is_monthly_visible(income.start_date, year, month):
-                        filtered_ids.append(income.id)
-
-                elif income.income_type == 'yearly':
-                    if is_yearly_visible(income.start_date, income.due_month_of_year, year, month):
-                        filtered_ids.append(income.id)
-
-            incomes = incomes.filter(id__in=filtered_ids)
 
         serializer = IncomeSerializer(incomes.order_by('-id'), many=True)
 
         total_income = incomes.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
-        monthly_total = incomes.filter(income_type='monthly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
-        daily_total = incomes.filter(income_type='daily').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
-        yearly_total = incomes.filter(income_type='yearly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        monthly_income = incomes.filter(income_type='monthly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        daily_income = incomes.filter(income_type='daily').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        yearly_income = incomes.filter(income_type='yearly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
         return Response({
             "success": True,
             "filters": {
                 "month": month,
                 "year": year,
-                "tab": tab,
                 "income_type": income_type,
                 "category": category,
-                "is_active": is_active,
             },
             "summary": {
                 "total_income": total_income,
-                "monthly_income": monthly_total,
-                "daily_income": daily_total,
-                "yearly_income": yearly_total,
+                "monthly_income": monthly_income,
+                "daily_income": daily_income,
+                "yearly_income": yearly_income,
             },
             "count": incomes.count(),
             "data": serializer.data
@@ -1114,21 +1145,21 @@ class IncomeDetailView(APIView):
             "success": True,
             "message": "Income deleted successfully."
         }, status=status.HTTP_200_OK)
-#ExpenseList-------------------------------------------------------
+
 
 class ExpenseListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        expenses = Expense.objects.filter(user=request.user)
+        today = timezone.localdate()
+        month = int(request.query_params.get('month', today.month))
+        year = int(request.query_params.get('year', today.year))
 
-        month = request.query_params.get('month')
-        year = request.query_params.get('year')
+        expenses = get_visible_expense_queryset(request.user, month, year)
+
         expense_type = request.query_params.get('expense_type')
         category = request.query_params.get('category')
         is_paid = request.query_params.get('is_paid')
-        is_active = request.query_params.get('is_active')
-        tab = request.query_params.get('tab', 'monthly')
 
         if expense_type:
             expenses = expenses.filter(expense_type=expense_type)
@@ -1139,56 +1170,28 @@ class ExpenseListCreateView(APIView):
                 expenses = expenses.filter(is_paid=True)
             elif is_paid.lower() == 'false':
                 expenses = expenses.filter(is_paid=False)
-        if is_active is not None:
-            if is_active.lower() == 'true':
-                expenses = expenses.filter(is_active=True)
-            elif is_active.lower() == 'false':
-                expenses = expenses.filter(is_active=False)
-
-        if month and year:
-            month = int(month)
-            year = int(year)
-
-            filtered_ids = []
-
-            for expense in expenses:
-                if expense.expense_type == 'daily':
-                    if expense.expense_date and expense.expense_date.month == month and expense.expense_date.year == year:
-                        filtered_ids.append(expense.id)
-
-                elif expense.expense_type == 'monthly':
-                    if is_monthly_visible(expense.start_date, year, month):
-                        filtered_ids.append(expense.id)
-
-                elif expense.expense_type == 'yearly':
-                    if is_yearly_visible(expense.start_date, expense.due_month_of_year, year, month):
-                        filtered_ids.append(expense.id)
-
-            expenses = expenses.filter(id__in=filtered_ids)
 
         serializer = ExpenseSerializer(expenses.order_by('-id'), many=True)
 
         total_expense = expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
-        monthly_total = expenses.filter(expense_type='monthly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
-        daily_total = expenses.filter(expense_type='daily').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
-        yearly_total = expenses.filter(expense_type='yearly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        monthly_expense = expenses.filter(expense_type='monthly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        daily_expense = expenses.filter(expense_type='daily').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        yearly_expense = expenses.filter(expense_type='yearly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
         return Response({
             "success": True,
             "filters": {
                 "month": month,
                 "year": year,
-                "tab": tab,
                 "expense_type": expense_type,
                 "category": category,
                 "is_paid": is_paid,
-                "is_active": is_active,
             },
             "summary": {
                 "total_expense": total_expense,
-                "monthly_expense": monthly_total,
-                "daily_expense": daily_total,
-                "yearly_expense": yearly_total,
+                "monthly_expense": monthly_expense,
+                "daily_expense": daily_expense,
+                "yearly_expense": yearly_expense,
             },
             "count": expenses.count(),
             "data": serializer.data
@@ -1264,7 +1267,6 @@ class ExpenseDetailView(APIView):
             "message": "Expense deleted successfully."
         }, status=status.HTTP_200_OK)
 
-#FinanceDashboard-----------------------------------------
 
 class FinanceDashboardView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -1274,35 +1276,8 @@ class FinanceDashboardView(APIView):
         month = int(request.query_params.get('month', today.month))
         year = int(request.query_params.get('year', today.year))
 
-        incomes = Income.objects.filter(user=request.user, is_active=True)
-        expenses = Expense.objects.filter(user=request.user, is_active=True)
-
-        visible_income_ids = []
-        for income in incomes:
-            if income.income_type == 'daily':
-                if income.income_date and income.income_date.month == month and income.income_date.year == year:
-                    visible_income_ids.append(income.id)
-            elif income.income_type == 'monthly':
-                if is_monthly_visible(income.start_date, year, month):
-                    visible_income_ids.append(income.id)
-            elif income.income_type == 'yearly':
-                if is_yearly_visible(income.start_date, income.due_month_of_year, year, month):
-                    visible_income_ids.append(income.id)
-
-        visible_expense_ids = []
-        for expense in expenses:
-            if expense.expense_type == 'daily':
-                if expense.expense_date and expense.expense_date.month == month and expense.expense_date.year == year:
-                    visible_expense_ids.append(expense.id)
-            elif expense.expense_type == 'monthly':
-                if is_monthly_visible(expense.start_date, year, month):
-                    visible_expense_ids.append(expense.id)
-            elif expense.expense_type == 'yearly':
-                if is_yearly_visible(expense.start_date, expense.due_month_of_year, year, month):
-                    visible_expense_ids.append(expense.id)
-
-        incomes = incomes.filter(id__in=visible_income_ids)
-        expenses = expenses.filter(id__in=visible_expense_ids)
+        incomes = get_visible_income_queryset(request.user, month, year)
+        expenses = get_visible_expense_queryset(request.user, month, year)
 
         total_income = incomes.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
         total_expense = expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
@@ -1319,26 +1294,6 @@ class FinanceDashboardView(APIView):
             savings_label = "Good"
         elif savings_rate >= 10:
             savings_label = "Fair"
-
-        income_by_type = {
-            "daily": incomes.filter(income_type='daily').aggregate(total=Sum('amount'))['total'] or Decimal('0.00'),
-            "monthly": incomes.filter(income_type='monthly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00'),
-            "yearly": incomes.filter(income_type='yearly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00'),
-        }
-
-        expense_by_type = {
-            "daily": expenses.filter(expense_type='daily').aggregate(total=Sum('amount'))['total'] or Decimal('0.00'),
-            "monthly": expenses.filter(expense_type='monthly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00'),
-            "yearly": expenses.filter(expense_type='yearly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00'),
-        }
-
-        income_by_category = list(
-            incomes.values('category').annotate(total=Sum('amount')).order_by('category')
-        )
-
-        expense_by_category = list(
-            expenses.values('category').annotate(total=Sum('amount')).order_by('category')
-        )
 
         return Response({
             "success": True,
@@ -1367,15 +1322,22 @@ class FinanceDashboardView(APIView):
                     "display": f"₹{remaining}"
                 }
             },
-            "income_breakdown": income_by_type,
-            "expense_breakdown": expense_by_type,
-            "income_by_category": income_by_category,
-            "expense_by_category": expense_by_category,
+            "income_counts": {
+                "total": incomes.count(),
+                "monthly": incomes.filter(income_type='monthly').count(),
+                "daily": incomes.filter(income_type='daily').count(),
+                "yearly": incomes.filter(income_type='yearly').count(),
+            },
+            "expense_counts": {
+                "total": expenses.count(),
+                "monthly": expenses.filter(expense_type='monthly').count(),
+                "daily": expenses.filter(expense_type='daily').count(),
+                "yearly": expenses.filter(expense_type='yearly').count(),
+            },
             "recent_incomes": IncomeSerializer(incomes.order_by('-id')[:10], many=True).data,
             "recent_expenses": ExpenseSerializer(expenses.order_by('-id')[:10], many=True).data
         }, status=status.HTTP_200_OK)
 
-#MonthlyBudget------------------------------------------
 
 class MonthlyBudgetView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -1385,35 +1347,8 @@ class MonthlyBudgetView(APIView):
         month = int(request.query_params.get('month', today.month))
         year = int(request.query_params.get('year', today.year))
 
-        incomes = Income.objects.filter(user=request.user, is_active=True)
-        expenses = Expense.objects.filter(user=request.user, is_active=True)
-
-        visible_income_ids = []
-        for income in incomes:
-            if income.income_type == 'daily':
-                if income.income_date and income.income_date.month == month and income.income_date.year == year:
-                    visible_income_ids.append(income.id)
-            elif income.income_type == 'monthly':
-                if is_monthly_visible(income.start_date, year, month):
-                    visible_income_ids.append(income.id)
-            elif income.income_type == 'yearly':
-                if is_yearly_visible(income.start_date, income.due_month_of_year, year, month):
-                    visible_income_ids.append(income.id)
-
-        visible_expense_ids = []
-        for expense in expenses:
-            if expense.expense_type == 'daily':
-                if expense.expense_date and expense.expense_date.month == month and expense.expense_date.year == year:
-                    visible_expense_ids.append(expense.id)
-            elif expense.expense_type == 'monthly':
-                if is_monthly_visible(expense.start_date, year, month):
-                    visible_expense_ids.append(expense.id)
-            elif expense.expense_type == 'yearly':
-                if is_yearly_visible(expense.start_date, expense.due_month_of_year, year, month):
-                    visible_expense_ids.append(expense.id)
-
-        incomes = incomes.filter(id__in=visible_income_ids)
-        expenses = expenses.filter(id__in=visible_expense_ids)
+        incomes = get_visible_income_queryset(request.user, month, year)
+        expenses = get_visible_expense_queryset(request.user, month, year)
 
         total_income = incomes.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
         total_spend = expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
@@ -1427,14 +1362,14 @@ class MonthlyBudgetView(APIView):
             week_total = Decimal('0.00')
 
             for expense in expenses:
-                expense_day = None
+                day_value = None
 
                 if expense.expense_type == 'daily' and expense.expense_date:
-                    expense_day = expense.expense_date.day
-                elif expense.expense_type in ['monthly', 'yearly']:
-                    expense_day = expense.due_day_of_month
+                    day_value = expense.expense_date.day
+                elif expense.expense_type in ['monthly', 'yearly'] and expense.due_day_of_month:
+                    day_value = expense.due_day_of_month
 
-                if expense_day and week_start <= expense_day <= week_end:
+                if day_value and week_start <= day_value <= week_end:
                     week_total += expense.amount
 
             weekly_breakdown.append({
@@ -1467,9 +1402,12 @@ class MonthlyBudgetView(APIView):
                 "usage_rate": usage_rate,
                 "status": budget_status
             },
+            "income_count": incomes.count(),
+            "expense_count": expenses.count(),
             "by_category": by_category,
             "weekly_breakdown": weekly_breakdown
         }, status=status.HTTP_200_OK)
+
 
 #Day Calendar overview-----------------------------------------
 class CalendarDashboardView(APIView):

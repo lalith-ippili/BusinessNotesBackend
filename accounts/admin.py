@@ -135,7 +135,6 @@ class DayPlanAdmin(admin.ModelAdmin):
     ordering = ('plan_date', 'time')
     list_editable = ('is_done',)
     list_per_page = 20
-    
 #HabitTracker---------------------------------------
 
 @admin.register(HabitTracker)

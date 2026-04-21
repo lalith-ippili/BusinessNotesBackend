@@ -254,25 +254,20 @@ class GoalSerializer(serializers.ModelSerializer):
 
 
 class DayPlanSerializer(serializers.ModelSerializer):
-    date = serializers.DateField(source='plan_date')
-    description = serializers.CharField(source='notes', allow_null=True, required=False)
-    category = serializers.SerializerMethodField()
-
     class Meta:
         model = DayPlan
         fields = [
-            'date',
+            'id',
+            'user',
+            'plan_date',
             'time',
             'description',
             'category',
             'is_done',
+            'created_at',
+            'updated_at',
         ]
-
-    def get_category(self, obj):
-        if obj.task and obj.task.category:
-            return str(obj.task.category)
-        return None
-
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
 
 # HabitTrackerSerializer-----------------------------------
 

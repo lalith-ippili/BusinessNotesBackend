@@ -235,6 +235,7 @@ class Income(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     category = models.CharField(max_length=30, choices=CATEGORY_CHOICES, default='other')
     income_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='monthly')
+    income_date = models.DateField(null=True, blank=True)
     due_day_of_month = models.PositiveSmallIntegerField(null=True, blank=True)
     start_date = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
@@ -243,11 +244,10 @@ class Income(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-id']
+        ordering = ['-income_date', '-id']
 
     def __str__(self):
         return self.name
-
 #Expense---------------
 class Expense(models.Model):
     CATEGORY_CHOICES = (

@@ -980,10 +980,16 @@ class IncomeListCreateView(APIView):
     def get(self, request):
         incomes = Income.objects.filter(user=request.user)
 
+        month = request.query_params.get('month')
+        year = request.query_params.get('year')
         income_type = request.query_params.get('income_type')
         category = request.query_params.get('category')
         is_active = request.query_params.get('is_active')
 
+        if month:
+            incomes = incomes.filter(income_date__month=month)
+        if year:
+            incomes = incomes.filter(income_date__year=year)
         if income_type:
             incomes = incomes.filter(income_type=income_type)
         if category:
@@ -1018,7 +1024,6 @@ class IncomeListCreateView(APIView):
             "success": False,
             "errors": serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
-
 
 class IncomeDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -1197,6 +1202,8 @@ class FinanceDashboardView(APIView):
 
         monthly_income_qs = Income.objects.filter(
             user=user,
+            income_date__month=month,
+            income_date__year=year,
             is_active=True
         )
 
@@ -1209,6 +1216,7 @@ class FinanceDashboardView(APIView):
         total_income = monthly_income_qs.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
         total_expense = monthly_expense_qs.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
         remaining = total_income - total_expense
+
         savings_rate = Decimal('0.00')
         if total_income > 0:
             savings_rate = round((remaining / total_income) * 100, 2)
@@ -1221,11 +1229,23 @@ class FinanceDashboardView(APIView):
         elif savings_rate >= 10:
             savings_label = "Fair"
 
+        income_by_category_qs = monthly_income_qs.values('category').annotate(
+            total=Sum('amount')
+        ).order_by('category')
+
         expense_by_category_qs = monthly_expense_qs.values('category').annotate(
             total=Sum('amount')
         ).order_by('category')
 
-        by_category = [
+        income_by_category = [
+            {
+                "category": item['category'],
+                "total": item['total']
+            }
+            for item in income_by_category_qs
+        ]
+
+        expense_by_category = [
             {
                 "category": item['category'],
                 "total": item['total']
@@ -1253,7 +1273,7 @@ class FinanceDashboardView(APIView):
         ).data
 
         recent_incomes = IncomeSerializer(
-            monthly_income_qs.order_by('-id')[:10],
+            monthly_income_qs.order_by('-income_date', '-id')[:10],
             many=True
         ).data
 
@@ -1289,12 +1309,12 @@ class FinanceDashboardView(APIView):
                 "total_expense": total_expense,
                 "remaining": remaining,
             },
-            "by_category": by_category,
+            "income_by_category": income_by_category,
+            "expense_by_category": expense_by_category,
             "weekly_spending": weekly_spending,
             "recent_incomes": recent_incomes,
             "recent_expenses": recent_expenses
         }, status=status.HTTP_200_OK)
-
 #MonthlyBudget------------------------------------------
 class MonthlyBudgetView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -1306,19 +1326,26 @@ class MonthlyBudgetView(APIView):
 
         user = request.user
 
-        active_incomes = Income.objects.filter(user=user, is_active=True)
+        monthly_incomes = Income.objects.filter(
+            user=user,
+            income_date__month=month,
+            income_date__year=year,
+            is_active=True
+        )
+
         monthly_expenses = Expense.objects.filter(
             user=user,
             expense_date__month=month,
             expense_date__year=year
         )
 
-        total_income = active_incomes.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        total_income = monthly_incomes.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
         total_spend = monthly_expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
         remaining = total_income - total_spend
 
         days_in_month = monthrange(year, month)[1]
         current_day = today.day if today.month == month and today.year == year else days_in_month
+
         expected_spend_till_now = Decimal('0.00')
         if days_in_month > 0:
             expected_spend_till_now = round((total_income / Decimal(days_in_month)) * Decimal(current_day), 2)
@@ -1353,12 +1380,11 @@ class MonthlyBudgetView(APIView):
             for item in weekly_qs
         ]
 
-        budget_status = "safe"
+        usage_rate = Decimal('0.00')
         if total_income > 0:
             usage_rate = round((total_spend / total_income) * 100, 2)
-        else:
-            usage_rate = Decimal('0.00')
 
+        budget_status = "safe"
         if total_spend > total_income:
             budget_status = "over_budget"
         elif usage_rate >= 80:
@@ -1379,7 +1405,6 @@ class MonthlyBudgetView(APIView):
             "by_category": by_category,
             "weekly_breakdown": weekly_breakdown
         }, status=status.HTTP_200_OK)
-
 #Day Calendar overview-----------------------------------------
 class CalendarDashboardView(APIView):
     permission_classes = [permissions.IsAuthenticated]

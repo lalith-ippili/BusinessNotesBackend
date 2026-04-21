@@ -324,6 +324,7 @@ class IncomeSerializer(serializers.ModelSerializer):
             'amount',
             'category',
             'income_type',
+            'income_date',
             'due_day_of_month',
             'start_date',
             'is_active',
@@ -337,7 +338,6 @@ class IncomeSerializer(serializers.ModelSerializer):
         if value is not None and (value < 1 or value > 31):
             raise serializers.ValidationError("Due day of month must be between 1 and 31.")
         return value
-
 #xpenseSerializer-------------------------
 class ExpenseSerializer(serializers.ModelSerializer):
     class Meta:

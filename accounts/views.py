@@ -579,6 +579,7 @@ class DayPlanDetailView(APIView):
 
 # Home dashboard overview-----------------------------
 
+
 class HomeDashboardView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -653,7 +654,7 @@ class HomeDashboardView(APIView):
         today_plans = DayPlan.objects.filter(
             user=user,
             plan_date=today
-        ).select_related('task')
+        )
 
         total_today_plans = today_plans.count()
         completed_today_plans = today_plans.filter(is_done=True).count()
@@ -662,13 +663,11 @@ class HomeDashboardView(APIView):
         today_plans_data = [
             {
                 "id": plan.id,
-                "title": plan.title,
                 "time": plan.time,
                 "plan_date": plan.plan_date,
-                "notes": plan.notes,
+                "description": plan.description,
+                "category": plan.category,
                 "is_done": plan.is_done,
-                "task": plan.task.id if plan.task else None,
-                "task_title": plan.task.title if plan.task else None,
             }
             for plan in today_plans
         ]
@@ -803,7 +802,7 @@ class HomeDashboardView(APIView):
             }
         }, status=status.HTTP_200_OK)
 
-        
+
 #HabitTrackerListCreateView--------------------------------------------
 
 class HabitTrackerListCreateView(APIView):

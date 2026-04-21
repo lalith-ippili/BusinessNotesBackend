@@ -118,9 +118,9 @@ class Goal(models.Model):
     )
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
-    category = models.CharField(max_length=100, blank=True, null=True)  # user input string
+    category = models.CharField(max_length=100, blank=True, null=True)
     target_date = models.DateField(blank=True, null=True)
-    status = models.CharField(max_length=100, blank=True, null=True, default='not_started')  # user input string
+    status = models.CharField(max_length=100, blank=True, null=True, default='not_started')
     progress = models.PositiveIntegerField(default=0)
     is_completed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -130,15 +130,9 @@ class Goal(models.Model):
         ordering = ['-id']
 
     def save(self, *args, **kwargs):
-        if self.progress >= 100:
+        if self.progress > 100:
             self.progress = 100
-            self.is_completed = True
-            self.status = 'completed'
-        elif self.is_completed:
-            self.status = 'completed'
-            if self.progress < 100:
-                self.progress = 100
-        elif self.progress < 0:
+        if self.progress < 0:
             self.progress = 0
 
         super().save(*args, **kwargs)

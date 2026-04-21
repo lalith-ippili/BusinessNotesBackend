@@ -1381,7 +1381,7 @@ class MonthlyBudgetView(APIView):
             "weekly_breakdown": weekly_breakdown
         }, status=status.HTTP_200_OK)
 
-#CalendarDashboard------------------------------------------
+#Day Calendar overview-----------------------------------------
 class CalendarDashboardView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -1476,19 +1476,17 @@ class CalendarDashboardView(APIView):
             user=user,
             plan_date__month=month,
             plan_date__year=year
-        ).select_related('task')
+        )
 
         for plan in day_plans:
             date_key = str(plan.plan_date)
             calendar_data[date_key]["date"] = plan.plan_date
             calendar_data[date_key]["day_plans"].append({
                 "id": plan.id,
-                "title": plan.title,
                 "time": plan.time,
-                "notes": plan.notes,
+                "description": plan.description,
+                "category": plan.category,
                 "is_done": plan.is_done,
-                "task": plan.task.id if plan.task else None,
-                "task_title": plan.task.title if plan.task else None,
             })
             calendar_data[date_key]["counts"]["day_plans"] += 1
 
@@ -1584,8 +1582,6 @@ class CalendarDashboardView(APIView):
             "today_data": today_data,
             "calendar_days": [day_data for _, day_data in sorted_days]
         }, status=status.HTTP_200_OK)
-
-
 
 
 

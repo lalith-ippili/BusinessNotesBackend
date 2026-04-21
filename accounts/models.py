@@ -172,18 +172,11 @@ class DayPlan(models.Model):
         on_delete=models.CASCADE,
         related_name='day_plans'
     )
-    task = models.ForeignKey(
-        'accounts.Task',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='day_plans'
-    )
-    title = models.CharField(max_length=255)
-    time = models.TimeField()
     plan_date = models.DateField()
-    notes = models.TextField(blank=True, null=True)
+    time = models.TimeField()
+    description = models.TextField(blank=True, null=True)
     is_done = models.BooleanField(default=False)
+    category = models.CharField(max_length=100, blank=True, null=True)  # user input string
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -191,9 +184,7 @@ class DayPlan(models.Model):
         ordering = ['plan_date', 'time']
 
     def __str__(self):
-        return f"{self.title} - {self.plan_date}"
-
-
+        return f"{self.plan_date} - {self.time}"
 
 
 

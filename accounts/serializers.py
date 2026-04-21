@@ -252,49 +252,26 @@ class GoalSerializer(serializers.ModelSerializer):
 
 # dayplan-------------------------------------------
 
+
 class DayPlanSerializer(serializers.ModelSerializer):
-    task = serializers.PrimaryKeyRelatedField(
-        queryset=Task.objects.all(),
-        required=False,
-        allow_null=True
-    )
-    task_details = serializers.SerializerMethodField()
+    date = serializers.DateField(source='plan_date')
+    description = serializers.CharField(source='notes', allow_null=True, required=False)
+    category = serializers.SerializerMethodField()
 
     class Meta:
         model = DayPlan
         fields = [
-            'id',
-            'title',
+            'date',
             'time',
-            'plan_date',
-            'task',
-            'task_details',
-            'notes',
+            'description',
+            'category',
             'is_done',
-            'created_at',
-            'updated_at',
         ]
-        read_only_fields = ['id', 'task_details', 'created_at', 'updated_at']
 
-    def get_task_details(self, obj):
-        if obj.task:
-            return {
-                "id": obj.task.id,
-                "title": obj.task.title,
-                "description": obj.task.description,
-                "status": obj.task.status,
-                "priority": obj.task.priority,
-                "due_date": obj.task.due_date,
-                "category": obj.task.category,
-                "is_completed": obj.task.is_completed,
-            }
+    def get_category(self, obj):
+        if obj.task and obj.task.category:
+            return str(obj.task.category)
         return None
-
-    def validate_task(self, value):
-        request = self.context.get('request')
-        if value and request and value.user != request.user:
-            raise serializers.ValidationError("You can attach only your own task.")
-        return value
 
 
 # HabitTrackerSerializer-----------------------------------

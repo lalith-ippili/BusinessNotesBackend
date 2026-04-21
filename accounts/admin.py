@@ -114,20 +114,28 @@ class GoalAdmin(admin.ModelAdmin):
 @admin.register(DayPlan)
 class DayPlanAdmin(admin.ModelAdmin):
     list_display = (
-    'id',
-    'title',
-    'user',
-    'task',
-    'plan_date',
-    'time',
-    'is_done',
-    'created_at',
+        'id',
+        'user',
+        'plan_date',
+        'time',
+        'category',
+        'is_done',
+        'created_at',
     )
-    list_filter = ('plan_date', 'is_done')
-    search_fields = ('title', 'notes', 'user__email', 'user__name', 'task__title')
+    list_filter = (
+        'plan_date',
+        'is_done',
+        'category',
+    )
+    search_fields = (
+        'user__email',
+        'description',
+        'category',
+    )
     ordering = ('plan_date', 'time')
-
-
+    list_editable = ('is_done',)
+    list_per_page = 20
+    
 #HabitTracker---------------------------------------
 
 @admin.register(HabitTracker)
@@ -140,86 +148,54 @@ class HabitTrackerAdmin(admin.ModelAdmin):
 @admin.register(PomodoroTimer)
 class PomodoroTimerAdmin(admin.ModelAdmin):
     list_display = (
-        'id',
-        'title',
-        'user',
-        'work_duration',
-        'break_duration',
-        'long_break_duration',
-        'cycles',
-        'is_active',
-        'created_at',
+    'id',
+    'title',
+    'user',
+    'work_duration',
+    'break_duration',
+    'long_break_duration',
+    'cycles',
+    'is_active',
+    'created_at',
     )
     list_filter = ('is_active',)
     search_fields = ('title', 'user__email', 'user__name')
     ordering = ('-id',)
-
 
 #IncomeAdmin----------------------
 
 @admin.register(Income)
 class IncomeAdmin(admin.ModelAdmin):
     list_display = (
-        'id',
-        'name',
-        'user',
-        'amount',
-        'category',
-        'income_type',
-        'due_day_of_month',
-        'is_active',
-        'created_at',
+    'id',
+    'name',
+    'user',
+    'amount',
+    'category',
+    'income_type',
+    'due_day_of_month',
+    'is_active',
+    'created_at',
     )
     list_filter = ('category', 'income_type', 'is_active')
     search_fields = ('name', 'notes', 'user__email', 'user__name')
     ordering = ('-id',)
-
 
 #ExpenseAdmin---------------------------
 
 @admin.register(Expense)
 class ExpenseAdmin(admin.ModelAdmin):
     list_display = (
-        'id',
-        'name',
-        'user',
-        'amount',
-        'category',
-        'expense_type',
-        'expense_date',
-        'is_paid',
-        'created_at',
+    'id',
+    'name',
+    'user',
+    'amount',
+    'category',
+    'expense_type',
+    'expense_date',
+    'is_paid',
+    'created_at',
     )
     list_filter = ('category', 'expense_type', 'is_paid', 'expense_date')
     search_fields = ('name', 'notes', 'user__email', 'user__name')
     ordering = ('-expense_date', '-id')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

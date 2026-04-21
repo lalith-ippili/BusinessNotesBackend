@@ -210,6 +210,9 @@ class PomodoroTimer(models.Model):
 
 #Income------------------------------------------------
 
+from django.db import models
+
+
 class Income(models.Model):
     CATEGORY_CHOICES = (
         ('salary', 'Salary'),
@@ -235,20 +238,28 @@ class Income(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     category = models.CharField(max_length=30, choices=CATEGORY_CHOICES, default='other')
     income_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='monthly')
+
+    # For daily records, this is the actual entry date
     income_date = models.DateField(null=True, blank=True)
-    due_day_of_month = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    # For recurring monthly/yearly items
     start_date = models.DateField(null=True, blank=True)
+    due_day_of_month = models.PositiveSmallIntegerField(null=True, blank=True)
+    due_month_of_year = models.PositiveSmallIntegerField(null=True, blank=True)
+
     is_active = models.BooleanField(default=True)
     notes = models.TextField(blank=True, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-income_date', '-id']
+        ordering = ['-id']
 
     def __str__(self):
         return self.name
-#Expense---------------
+
+
 class Expense(models.Model):
     CATEGORY_CHOICES = (
         ('food', 'Food'),
@@ -278,20 +289,27 @@ class Expense(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     category = models.CharField(max_length=30, choices=CATEGORY_CHOICES, default='other')
     expense_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='monthly')
+
+    # For daily records, this is the actual entry date
+    expense_date = models.DateField(null=True, blank=True)
+
+    # For recurring monthly/yearly items
+    start_date = models.DateField(null=True, blank=True)
     due_day_of_month = models.PositiveSmallIntegerField(null=True, blank=True)
-    expense_date = models.DateField()
+    due_month_of_year = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    is_active = models.BooleanField(default=True)
     is_paid = models.BooleanField(default=False)
     notes = models.TextField(blank=True, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-expense_date', '-id']
+        ordering = ['-id']
 
     def __str__(self):
         return self.name
-
-
 
 
 

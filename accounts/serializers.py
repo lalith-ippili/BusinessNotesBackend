@@ -325,8 +325,9 @@ class IncomeSerializer(serializers.ModelSerializer):
             'category',
             'income_type',
             'income_date',
-            'due_day_of_month',
             'start_date',
+            'due_day_of_month',
+            'due_month_of_year',
             'is_active',
             'notes',
             'created_at',
@@ -335,10 +336,43 @@ class IncomeSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def validate_due_day_of_month(self, value):
-        if value is not None and (value < 1 or value > 31):
+        if value is not None and not (1 <= value <= 31):
             raise serializers.ValidationError("Due day of month must be between 1 and 31.")
         return value
-#xpenseSerializer-------------------------
+
+    def validate_due_month_of_year(self, value):
+        if value is not None and not (1 <= value <= 12):
+            raise serializers.ValidationError("Due month of year must be between 1 and 12.")
+        return value
+
+    def validate(self, attrs):
+        income_type = attrs.get('income_type', getattr(self.instance, 'income_type', None))
+        income_date = attrs.get('income_date', getattr(self.instance, 'income_date', None))
+        start_date = attrs.get('start_date', getattr(self.instance, 'start_date', None))
+        due_day = attrs.get('due_day_of_month', getattr(self.instance, 'due_day_of_month', None))
+        due_month = attrs.get('due_month_of_year', getattr(self.instance, 'due_month_of_year', None))
+
+        if income_type == 'daily':
+            if not income_date:
+                raise serializers.ValidationError({"income_date": "This field is required for daily income."})
+
+        elif income_type == 'monthly':
+            if not start_date:
+                raise serializers.ValidationError({"start_date": "This field is required for monthly income."})
+            if not due_day:
+                raise serializers.ValidationError({"due_day_of_month": "This field is required for monthly income."})
+
+        elif income_type == 'yearly':
+            if not start_date:
+                raise serializers.ValidationError({"start_date": "This field is required for yearly income."})
+            if not due_day:
+                raise serializers.ValidationError({"due_day_of_month": "This field is required for yearly income."})
+            if not due_month:
+                raise serializers.ValidationError({"due_month_of_year": "This field is required for yearly income."})
+
+        return attrs
+
+
 class ExpenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Expense
@@ -348,8 +382,11 @@ class ExpenseSerializer(serializers.ModelSerializer):
             'amount',
             'category',
             'expense_type',
-            'due_day_of_month',
             'expense_date',
+            'start_date',
+            'due_day_of_month',
+            'due_month_of_year',
+            'is_active',
             'is_paid',
             'notes',
             'created_at',
@@ -358,11 +395,41 @@ class ExpenseSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def validate_due_day_of_month(self, value):
-        if value is not None and (value < 1 or value > 31):
+        if value is not None and not (1 <= value <= 31):
             raise serializers.ValidationError("Due day of month must be between 1 and 31.")
         return value
 
+    def validate_due_month_of_year(self, value):
+        if value is not None and not (1 <= value <= 12):
+            raise serializers.ValidationError("Due month of year must be between 1 and 12.")
+        return value
 
+    def validate(self, attrs):
+        expense_type = attrs.get('expense_type', getattr(self.instance, 'expense_type', None))
+        expense_date = attrs.get('expense_date', getattr(self.instance, 'expense_date', None))
+        start_date = attrs.get('start_date', getattr(self.instance, 'start_date', None))
+        due_day = attrs.get('due_day_of_month', getattr(self.instance, 'due_day_of_month', None))
+        due_month = attrs.get('due_month_of_year', getattr(self.instance, 'due_month_of_year', None))
+
+        if expense_type == 'daily':
+            if not expense_date:
+                raise serializers.ValidationError({"expense_date": "This field is required for daily expense."})
+
+        elif expense_type == 'monthly':
+            if not start_date:
+                raise serializers.ValidationError({"start_date": "This field is required for monthly expense."})
+            if not due_day:
+                raise serializers.ValidationError({"due_day_of_month": "This field is required for monthly expense."})
+
+        elif expense_type == 'yearly':
+            if not start_date:
+                raise serializers.ValidationError({"start_date": "This field is required for yearly expense."})
+            if not due_day:
+                raise serializers.ValidationError({"due_day_of_month": "This field is required for yearly expense."})
+            if not due_month:
+                raise serializers.ValidationError({"due_month_of_year": "This field is required for yearly expense."})
+
+        return attrs
 
 
 

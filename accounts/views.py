@@ -985,11 +985,8 @@ class IncomeListCreateView(APIView):
         income_type = request.query_params.get('income_type')
         category = request.query_params.get('category')
         is_active = request.query_params.get('is_active')
+        tab = request.query_params.get('tab', 'monthly')  # monthly / daily / yearly
 
-        if month:
-            incomes = incomes.filter(income_date__month=month)
-        if year:
-            incomes = incomes.filter(income_date__year=year)
         if income_type:
             incomes = incomes.filter(income_type=income_type)
         if category:
@@ -1000,13 +997,51 @@ class IncomeListCreateView(APIView):
             elif is_active.lower() == 'false':
                 incomes = incomes.filter(is_active=False)
 
-        serializer = IncomeSerializer(incomes, many=True)
+        if month and year:
+            month = int(month)
+            year = int(year)
+
+            filtered_ids = []
+
+            for income in incomes:
+                if income.income_type == 'daily':
+                    if income.income_date and income.income_date.month == month and income.income_date.year == year:
+                        filtered_ids.append(income.id)
+
+                elif income.income_type == 'monthly':
+                    if is_monthly_visible(income.start_date, year, month):
+                        filtered_ids.append(income.id)
+
+                elif income.income_type == 'yearly':
+                    if is_yearly_visible(income.start_date, income.due_month_of_year, year, month):
+                        filtered_ids.append(income.id)
+
+            incomes = incomes.filter(id__in=filtered_ids)
+
+        serializer = IncomeSerializer(incomes.order_by('-id'), many=True)
+
         total_income = incomes.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        monthly_total = incomes.filter(income_type='monthly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        daily_total = incomes.filter(income_type='daily').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        yearly_total = incomes.filter(income_type='yearly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
         return Response({
             "success": True,
+            "filters": {
+                "month": month,
+                "year": year,
+                "tab": tab,
+                "income_type": income_type,
+                "category": category,
+                "is_active": is_active,
+            },
+            "summary": {
+                "total_income": total_income,
+                "monthly_income": monthly_total,
+                "daily_income": daily_total,
+                "yearly_income": yearly_total,
+            },
             "count": incomes.count(),
-            "total_income": total_income,
             "data": serializer.data
         }, status=status.HTTP_200_OK)
 
@@ -1024,6 +1059,7 @@ class IncomeListCreateView(APIView):
             "success": False,
             "errors": serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
+
 
 class IncomeDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -1078,8 +1114,6 @@ class IncomeDetailView(APIView):
             "success": True,
             "message": "Income deleted successfully."
         }, status=status.HTTP_200_OK)
-
-
 #ExpenseList-------------------------------------------------------
 
 class ExpenseListCreateView(APIView):
@@ -1093,11 +1127,9 @@ class ExpenseListCreateView(APIView):
         expense_type = request.query_params.get('expense_type')
         category = request.query_params.get('category')
         is_paid = request.query_params.get('is_paid')
+        is_active = request.query_params.get('is_active')
+        tab = request.query_params.get('tab', 'monthly')
 
-        if month:
-            expenses = expenses.filter(expense_date__month=month)
-        if year:
-            expenses = expenses.filter(expense_date__year=year)
         if expense_type:
             expenses = expenses.filter(expense_type=expense_type)
         if category:
@@ -1107,14 +1139,58 @@ class ExpenseListCreateView(APIView):
                 expenses = expenses.filter(is_paid=True)
             elif is_paid.lower() == 'false':
                 expenses = expenses.filter(is_paid=False)
+        if is_active is not None:
+            if is_active.lower() == 'true':
+                expenses = expenses.filter(is_active=True)
+            elif is_active.lower() == 'false':
+                expenses = expenses.filter(is_active=False)
 
-        serializer = ExpenseSerializer(expenses, many=True)
+        if month and year:
+            month = int(month)
+            year = int(year)
+
+            filtered_ids = []
+
+            for expense in expenses:
+                if expense.expense_type == 'daily':
+                    if expense.expense_date and expense.expense_date.month == month and expense.expense_date.year == year:
+                        filtered_ids.append(expense.id)
+
+                elif expense.expense_type == 'monthly':
+                    if is_monthly_visible(expense.start_date, year, month):
+                        filtered_ids.append(expense.id)
+
+                elif expense.expense_type == 'yearly':
+                    if is_yearly_visible(expense.start_date, expense.due_month_of_year, year, month):
+                        filtered_ids.append(expense.id)
+
+            expenses = expenses.filter(id__in=filtered_ids)
+
+        serializer = ExpenseSerializer(expenses.order_by('-id'), many=True)
+
         total_expense = expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        monthly_total = expenses.filter(expense_type='monthly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        daily_total = expenses.filter(expense_type='daily').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        yearly_total = expenses.filter(expense_type='yearly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
         return Response({
             "success": True,
+            "filters": {
+                "month": month,
+                "year": year,
+                "tab": tab,
+                "expense_type": expense_type,
+                "category": category,
+                "is_paid": is_paid,
+                "is_active": is_active,
+            },
+            "summary": {
+                "total_expense": total_expense,
+                "monthly_expense": monthly_total,
+                "daily_expense": daily_total,
+                "yearly_expense": yearly_total,
+            },
             "count": expenses.count(),
-            "total_expense": total_expense,
             "data": serializer.data
         }, status=status.HTTP_200_OK)
 
@@ -1188,8 +1264,8 @@ class ExpenseDetailView(APIView):
             "message": "Expense deleted successfully."
         }, status=status.HTTP_200_OK)
 
-
 #FinanceDashboard-----------------------------------------
+
 class FinanceDashboardView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -1198,23 +1274,38 @@ class FinanceDashboardView(APIView):
         month = int(request.query_params.get('month', today.month))
         year = int(request.query_params.get('year', today.year))
 
-        user = request.user
+        incomes = Income.objects.filter(user=request.user, is_active=True)
+        expenses = Expense.objects.filter(user=request.user, is_active=True)
 
-        monthly_income_qs = Income.objects.filter(
-            user=user,
-            income_date__month=month,
-            income_date__year=year,
-            is_active=True
-        )
+        visible_income_ids = []
+        for income in incomes:
+            if income.income_type == 'daily':
+                if income.income_date and income.income_date.month == month and income.income_date.year == year:
+                    visible_income_ids.append(income.id)
+            elif income.income_type == 'monthly':
+                if is_monthly_visible(income.start_date, year, month):
+                    visible_income_ids.append(income.id)
+            elif income.income_type == 'yearly':
+                if is_yearly_visible(income.start_date, income.due_month_of_year, year, month):
+                    visible_income_ids.append(income.id)
 
-        monthly_expense_qs = Expense.objects.filter(
-            user=user,
-            expense_date__month=month,
-            expense_date__year=year
-        )
+        visible_expense_ids = []
+        for expense in expenses:
+            if expense.expense_type == 'daily':
+                if expense.expense_date and expense.expense_date.month == month and expense.expense_date.year == year:
+                    visible_expense_ids.append(expense.id)
+            elif expense.expense_type == 'monthly':
+                if is_monthly_visible(expense.start_date, year, month):
+                    visible_expense_ids.append(expense.id)
+            elif expense.expense_type == 'yearly':
+                if is_yearly_visible(expense.start_date, expense.due_month_of_year, year, month):
+                    visible_expense_ids.append(expense.id)
 
-        total_income = monthly_income_qs.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
-        total_expense = monthly_expense_qs.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        incomes = incomes.filter(id__in=visible_income_ids)
+        expenses = expenses.filter(id__in=visible_expense_ids)
+
+        total_income = incomes.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        total_expense = expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
         remaining = total_income - total_expense
 
         savings_rate = Decimal('0.00')
@@ -1229,53 +1320,25 @@ class FinanceDashboardView(APIView):
         elif savings_rate >= 10:
             savings_label = "Fair"
 
-        income_by_category_qs = monthly_income_qs.values('category').annotate(
-            total=Sum('amount')
-        ).order_by('category')
+        income_by_type = {
+            "daily": incomes.filter(income_type='daily').aggregate(total=Sum('amount'))['total'] or Decimal('0.00'),
+            "monthly": incomes.filter(income_type='monthly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00'),
+            "yearly": incomes.filter(income_type='yearly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00'),
+        }
 
-        expense_by_category_qs = monthly_expense_qs.values('category').annotate(
-            total=Sum('amount')
-        ).order_by('category')
+        expense_by_type = {
+            "daily": expenses.filter(expense_type='daily').aggregate(total=Sum('amount'))['total'] or Decimal('0.00'),
+            "monthly": expenses.filter(expense_type='monthly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00'),
+            "yearly": expenses.filter(expense_type='yearly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00'),
+        }
 
-        income_by_category = [
-            {
-                "category": item['category'],
-                "total": item['total']
-            }
-            for item in income_by_category_qs
-        ]
+        income_by_category = list(
+            incomes.values('category').annotate(total=Sum('amount')).order_by('category')
+        )
 
-        expense_by_category = [
-            {
-                "category": item['category'],
-                "total": item['total']
-            }
-            for item in expense_by_category_qs
-        ]
-
-        weekly_qs = monthly_expense_qs.annotate(
-            week=ExtractWeek('expense_date')
-        ).values('week').annotate(
-            total=Sum('amount')
-        ).order_by('week')
-
-        weekly_spending = [
-            {
-                "week": item['week'],
-                "total": item['total']
-            }
-            for item in weekly_qs
-        ]
-
-        recent_expenses = ExpenseSerializer(
-            monthly_expense_qs.order_by('-expense_date', '-id')[:10],
-            many=True
-        ).data
-
-        recent_incomes = IncomeSerializer(
-            monthly_income_qs.order_by('-income_date', '-id')[:10],
-            many=True
-        ).data
+        expense_by_category = list(
+            expenses.values('category').annotate(total=Sum('amount')).order_by('category')
+        )
 
         return Response({
             "success": True,
@@ -1304,18 +1367,16 @@ class FinanceDashboardView(APIView):
                     "display": f"₹{remaining}"
                 }
             },
-            "overview": {
-                "total_income": total_income,
-                "total_expense": total_expense,
-                "remaining": remaining,
-            },
+            "income_breakdown": income_by_type,
+            "expense_breakdown": expense_by_type,
             "income_by_category": income_by_category,
             "expense_by_category": expense_by_category,
-            "weekly_spending": weekly_spending,
-            "recent_incomes": recent_incomes,
-            "recent_expenses": recent_expenses
+            "recent_incomes": IncomeSerializer(incomes.order_by('-id')[:10], many=True).data,
+            "recent_expenses": ExpenseSerializer(expenses.order_by('-id')[:10], many=True).data
         }, status=status.HTTP_200_OK)
+
 #MonthlyBudget------------------------------------------
+
 class MonthlyBudgetView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -1324,61 +1385,66 @@ class MonthlyBudgetView(APIView):
         month = int(request.query_params.get('month', today.month))
         year = int(request.query_params.get('year', today.year))
 
-        user = request.user
+        incomes = Income.objects.filter(user=request.user, is_active=True)
+        expenses = Expense.objects.filter(user=request.user, is_active=True)
 
-        monthly_incomes = Income.objects.filter(
-            user=user,
-            income_date__month=month,
-            income_date__year=year,
-            is_active=True
-        )
+        visible_income_ids = []
+        for income in incomes:
+            if income.income_type == 'daily':
+                if income.income_date and income.income_date.month == month and income.income_date.year == year:
+                    visible_income_ids.append(income.id)
+            elif income.income_type == 'monthly':
+                if is_monthly_visible(income.start_date, year, month):
+                    visible_income_ids.append(income.id)
+            elif income.income_type == 'yearly':
+                if is_yearly_visible(income.start_date, income.due_month_of_year, year, month):
+                    visible_income_ids.append(income.id)
 
-        monthly_expenses = Expense.objects.filter(
-            user=user,
-            expense_date__month=month,
-            expense_date__year=year
-        )
+        visible_expense_ids = []
+        for expense in expenses:
+            if expense.expense_type == 'daily':
+                if expense.expense_date and expense.expense_date.month == month and expense.expense_date.year == year:
+                    visible_expense_ids.append(expense.id)
+            elif expense.expense_type == 'monthly':
+                if is_monthly_visible(expense.start_date, year, month):
+                    visible_expense_ids.append(expense.id)
+            elif expense.expense_type == 'yearly':
+                if is_yearly_visible(expense.start_date, expense.due_month_of_year, year, month):
+                    visible_expense_ids.append(expense.id)
 
-        total_income = monthly_incomes.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
-        total_spend = monthly_expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        incomes = incomes.filter(id__in=visible_income_ids)
+        expenses = expenses.filter(id__in=visible_expense_ids)
+
+        total_income = incomes.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        total_spend = expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
         remaining = total_income - total_spend
 
         days_in_month = monthrange(year, month)[1]
-        current_day = today.day if today.month == month and today.year == year else days_in_month
 
-        expected_spend_till_now = Decimal('0.00')
-        if days_in_month > 0:
-            expected_spend_till_now = round((total_income / Decimal(days_in_month)) * Decimal(current_day), 2)
+        weekly_breakdown = []
+        for week_start in [1, 8, 15, 22, 29]:
+            week_end = min(week_start + 6, days_in_month)
+            week_total = Decimal('0.00')
 
-        expense_by_category = monthly_expenses.values('category').annotate(
-            total=Sum('amount')
-        ).order_by('-total')
+            for expense in expenses:
+                expense_day = None
 
-        by_category = []
-        for item in expense_by_category:
-            percent = Decimal('0.00')
-            if total_spend > 0:
-                percent = round((item['total'] / total_spend) * 100, 2)
+                if expense.expense_type == 'daily' and expense.expense_date:
+                    expense_day = expense.expense_date.day
+                elif expense.expense_type in ['monthly', 'yearly']:
+                    expense_day = expense.due_day_of_month
 
-            by_category.append({
-                "category": item['category'],
-                "total": item['total'],
-                "percentage_of_spend": percent
+                if expense_day and week_start <= expense_day <= week_end:
+                    week_total += expense.amount
+
+            weekly_breakdown.append({
+                "week_label": f"{week_start}-{week_end}",
+                "spent": week_total
             })
 
-        weekly_qs = monthly_expenses.annotate(
-            week=ExtractWeek('expense_date')
-        ).values('week').annotate(
-            total=Sum('amount')
-        ).order_by('week')
-
-        weekly_breakdown = [
-            {
-                "week": item['week'],
-                "spent": item['total']
-            }
-            for item in weekly_qs
-        ]
+        by_category = list(
+            expenses.values('category').annotate(total=Sum('amount')).order_by('-total')
+        )
 
         usage_rate = Decimal('0.00')
         if total_income > 0:
@@ -1399,12 +1465,12 @@ class MonthlyBudgetView(APIView):
                 "total_spend": total_spend,
                 "remaining": remaining,
                 "usage_rate": usage_rate,
-                "status": budget_status,
-                "expected_spend_till_now": expected_spend_till_now
+                "status": budget_status
             },
             "by_category": by_category,
             "weekly_breakdown": weekly_breakdown
         }, status=status.HTTP_200_OK)
+
 #Day Calendar overview-----------------------------------------
 class CalendarDashboardView(APIView):
     permission_classes = [permissions.IsAuthenticated]

@@ -175,8 +175,10 @@ def validate(self, attrs):
 
 # Notes--------------------
 
+
 class NoteSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
+    category = serializers.CharField(required=False, allow_blank=True, max_length=200)
 
     class Meta:
         model = Note
@@ -191,6 +193,10 @@ class NoteSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = ['id', 'image_url', 'created_at', 'updated_at']
+
+    def validate_category(self, value):
+        value = (value or "").strip()
+        return value if value else "other"
 
     def get_image_url(self, obj):
         request = self.context.get('request')

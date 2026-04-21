@@ -87,19 +87,7 @@ class Task(models.Model):
 
 # Notes---------------------
 
-
 class Note(models.Model):
-    CATEGORY_CHOICES = (
-        ('business', 'Business'),
-        ('marketing', 'Marketing'),
-        ('finance', 'Finance'),
-        ('projects', 'Projects'),
-        ('hr', 'HR'),
-        ('operations', 'Operations'),
-        ('personal', 'Personal'),
-        ('other', 'Other'),
-    )
-
     user = models.ForeignKey(
         'accounts.User',
         on_delete=models.CASCADE,
@@ -107,7 +95,7 @@ class Note(models.Model):
     )
     title = models.CharField(max_length=255)
     content = models.TextField()
-    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES, default='other')
+    category = models.CharField(max_length=200, default='other', blank=True)
     image = models.ImageField(upload_to='notes/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

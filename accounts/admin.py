@@ -92,6 +92,7 @@ class NoteAdmin(admin.ModelAdmin):
     ordering = ('-id',)
 
 # Goals-----------------------
+
 @admin.register(Goal)
 class GoalAdmin(admin.ModelAdmin):
     list_display = (
@@ -99,38 +100,37 @@ class GoalAdmin(admin.ModelAdmin):
     'title',
     'user',
     'category',
+    'target_date',
     'status',
     'progress',
     'is_completed',
-    'target_date',
     'created_at',
     )
-    list_filter = ('category', 'status', 'is_completed')
-    search_fields = ('title', 'description', 'user__email', 'user__name')
+    list_filter = ('status', 'is_completed', 'category', 'target_date')
+    search_fields = ('title', 'description', 'category', 'user__email', 'user__name')
     ordering = ('-id',)
-
 # dayplan------------------------------
 
 @admin.register(DayPlan)
 class DayPlanAdmin(admin.ModelAdmin):
     list_display = (
-        'id',
-        'user',
-        'plan_date',
-        'time',
-        'category',
-        'is_done',
-        'created_at',
+    'id',
+    'user',
+    'plan_date',
+    'time',
+    'category',
+    'is_done',
+    'created_at',
     )
     list_filter = (
-        'plan_date',
-        'is_done',
-        'category',
+    'plan_date',
+    'is_done',
+    'category',
     )
     search_fields = (
-        'user__email',
-        'description',
-        'category',
+    'user__email',
+    'description',
+    'category',
     )
     ordering = ('plan_date', 'time')
     list_editable = ('is_done',)

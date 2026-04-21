@@ -206,6 +206,7 @@ class NoteSerializer(serializers.ModelSerializer):
 
 # Goals-------------
 
+
 class GoalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Goal
@@ -223,33 +224,7 @@ class GoalSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
-    def validate_progress(self, value):
-        if value < 0 or value > 100:
-            raise serializers.ValidationError("Progress must be between 0 and 100.")
-        return value
-
-    def validate(self, attrs):
-        progress = attrs.get('progress')
-        is_completed = attrs.get('is_completed')
-        status_value = attrs.get('status')
-
-        if progress == 100:
-            attrs['is_completed'] = True
-            attrs['status'] = 'completed'
-
-        if is_completed is True and progress is None:
-            attrs['progress'] = 100
-            attrs['status'] = 'completed'
-
-        if status_value == 'completed' and progress is None:
-            attrs['progress'] = 100
-            attrs['is_completed'] = True
-
-        return attrs
-
-
-        # dayplan---------------------------------------------------------
-
+        
 # dayplan-------------------------------------------
 
 

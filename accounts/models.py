@@ -111,16 +111,6 @@ class Note(models.Model):
 
 
 class Goal(models.Model):
-    CATEGORY_CHOICES = (
-        ('personal', 'Personal'),
-        ('career', 'Career'),
-        ('business', 'Business'),
-        ('health', 'Health'),
-        ('finance', 'Finance'),
-        ('education', 'Education'),
-        ('other', 'Other'),
-    )
-
     STATUS_CHOICES = (
         ('not_started', 'Not Started'),
         ('in_progress', 'In Progress'),
@@ -134,7 +124,7 @@ class Goal(models.Model):
     )
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
-    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES, default='other')
+    category = models.CharField(max_length=100, blank=True, null=True)  # user input string
     target_date = models.DateField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='not_started')
     progress = models.PositiveIntegerField(default=0)
@@ -150,7 +140,7 @@ class Goal(models.Model):
             self.progress = 100
             self.is_completed = True
             self.status = 'completed'
-        elif self.progress > 0 and self.progress < 100 and self.status == 'not_started':
+        elif 0 < self.progress < 100 and self.status == 'not_started':
             self.status = 'in_progress'
         elif self.is_completed:
             self.status = 'completed'
@@ -161,8 +151,6 @@ class Goal(models.Model):
 
     def __str__(self):
         return self.title
-
-
 
 # dayplan-------------
 

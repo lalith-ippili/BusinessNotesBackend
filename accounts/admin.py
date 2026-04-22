@@ -166,20 +166,22 @@ class PomodoroTimerAdmin(admin.ModelAdmin):
 @admin.register(Income)
 class IncomeAdmin(admin.ModelAdmin):
     list_display = (
-    'id',
-    'name',
-    'user',
-    'amount',
-    'category',
-    'income_type',
-    'due_day_of_month',
-    'is_active',
-    'created_at',
+        'id',
+        'name',
+        'user',
+        'amount',
+        'category',
+        'income_type',
+        'income_date',
+        'start_date',
+        'due_day_of_month',
+        'due_month_of_year',
+        'is_active',
+        'created_at',
     )
     list_filter = ('category', 'income_type', 'is_active')
     search_fields = ('name', 'notes', 'user__email', 'user__name')
     ordering = ('-id',)
-
 #ExpenseAdmin---------------------------
 
 @admin.register(Expense)

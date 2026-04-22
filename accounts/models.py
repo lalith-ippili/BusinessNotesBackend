@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
+from django.core.exceptions import ValidationError
+
 
 
 class UserManager(BaseUserManager):
@@ -210,6 +212,7 @@ class PomodoroTimer(models.Model):
 
 #Income------------------------------------------------
 
+
 class Income(models.Model):
     CATEGORY_CHOICES = (
         ('salary', 'Salary'),
@@ -239,7 +242,7 @@ class Income(models.Model):
     # daily entry
     income_date = models.DateField(null=True, blank=True)
 
-    # recurring entry
+    # monthly / yearly entry
     start_date = models.DateField(null=True, blank=True)
     due_day_of_month = models.PositiveSmallIntegerField(null=True, blank=True)
     due_month_of_year = models.PositiveSmallIntegerField(null=True, blank=True)
@@ -255,6 +258,49 @@ class Income(models.Model):
 
     def __str__(self):
         return self.name
+
+    def clean(self):
+        if self.income_type == 'daily':
+            if not self.income_date:
+                raise ValidationError({"income_date": "This field is required for daily income."})
+
+        elif self.income_type == 'monthly':
+            if not self.start_date:
+                raise ValidationError({"start_date": "This field is required for monthly income."})
+            if self.due_day_of_month is None:
+                raise ValidationError({"due_day_of_month": "This field is required for monthly income."})
+
+        elif self.income_type == 'yearly':
+            if not self.start_date:
+                raise ValidationError({"start_date": "This field is required for yearly income."})
+            if self.due_day_of_month is None:
+                raise ValidationError({"due_day_of_month": "This field is required for yearly income."})
+            if self.due_month_of_year is None:
+                raise ValidationError({"due_month_of_year": "This field is required for yearly income."})
+
+        if self.due_day_of_month is not None and not (1 <= self.due_day_of_month <= 31):
+            raise ValidationError({"due_day_of_month": "Due day of month must be between 1 and 31."})
+
+        if self.due_month_of_year is not None and not (1 <= self.due_month_of_year <= 12):
+            raise ValidationError({"due_month_of_year": "Due month of year must be between 1 and 12."})
+
+    def save(self, *args, **kwargs):
+        # Clear unrelated fields based on income type
+        if self.income_type == 'daily':
+            self.start_date = None
+            self.due_day_of_month = None
+            self.due_month_of_year = None
+
+        elif self.income_type == 'monthly':
+            self.income_date = None
+            self.due_month_of_year = None
+
+        elif self.income_type == 'yearly':
+            self.income_date = None
+
+        self.full_clean()
+        super().save(*args, **kwargs)
+# Expense-----------------
 
 class Expense(models.Model):
     CATEGORY_CHOICES = (

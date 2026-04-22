@@ -346,32 +346,59 @@ class IncomeSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        income_type = attrs.get('income_type', getattr(self.instance, 'income_type', None))
-        income_date = attrs.get('income_date', getattr(self.instance, 'income_date', None))
-        start_date = attrs.get('start_date', getattr(self.instance, 'start_date', None))
-        due_day = attrs.get('due_day_of_month', getattr(self.instance, 'due_day_of_month', None))
-        due_month = attrs.get('due_month_of_year', getattr(self.instance, 'due_month_of_year', None))
+        instance = getattr(self, 'instance', None)
+
+        income_type = attrs.get('income_type', getattr(instance, 'income_type', None))
+        income_date = attrs.get('income_date', getattr(instance, 'income_date', None))
+        start_date = attrs.get('start_date', getattr(instance, 'start_date', None))
+        due_day = attrs.get('due_day_of_month', getattr(instance, 'due_day_of_month', None))
+        due_month = attrs.get('due_month_of_year', getattr(instance, 'due_month_of_year', None))
 
         if income_type == 'daily':
             if not income_date:
-                raise serializers.ValidationError({"income_date": "This field is required for daily income."})
+                raise serializers.ValidationError({
+                    "income_date": "This field is required for daily income."
+                })
+
+            attrs['start_date'] = None
+            attrs['due_day_of_month'] = None
+            attrs['due_month_of_year'] = None
 
         elif income_type == 'monthly':
             if not start_date:
-                raise serializers.ValidationError({"start_date": "This field is required for monthly income."})
-            if not due_day:
-                raise serializers.ValidationError({"due_day_of_month": "This field is required for monthly income."})
+                raise serializers.ValidationError({
+                    "start_date": "This field is required for monthly income."
+                })
+            if due_day is None:
+                raise serializers.ValidationError({
+                    "due_day_of_month": "This field is required for monthly income."
+                })
+
+            attrs['income_date'] = None
+            attrs['due_month_of_year'] = None
 
         elif income_type == 'yearly':
             if not start_date:
-                raise serializers.ValidationError({"start_date": "This field is required for yearly income."})
-            if not due_day:
-                raise serializers.ValidationError({"due_day_of_month": "This field is required for yearly income."})
-            if not due_month:
-                raise serializers.ValidationError({"due_month_of_year": "This field is required for yearly income."})
+                raise serializers.ValidationError({
+                    "start_date": "This field is required for yearly income."
+                })
+            if due_day is None:
+                raise serializers.ValidationError({
+                    "due_day_of_month": "This field is required for yearly income."
+                })
+            if due_month is None:
+                raise serializers.ValidationError({
+                    "due_month_of_year": "This field is required for yearly income."
+                })
+
+            attrs['income_date'] = None
+
+        else:
+            raise serializers.ValidationError({
+                "income_type": "Invalid income type."
+            })
 
         return attrs
-
 
 class ExpenseSerializer(serializers.ModelSerializer):
     class Meta:

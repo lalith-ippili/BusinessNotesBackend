@@ -974,63 +974,22 @@ class PomodoroTimerDetailView(APIView):
 
 #IncomeListC-------------------------------------------------
 
-def is_monthly_visible(start_date, selected_year, selected_month):
-    if not start_date:
-        return False
-
-    start_month_date = date(start_date.year, start_date.month, 1)
-    selected_month_date = date(selected_year, selected_month, 1)
-    return start_month_date <= selected_month_date
-
-
-def is_yearly_visible(start_date, due_month_of_year, selected_year, selected_month):
-    if not start_date or not due_month_of_year:
-        return False
-
-    start_month_date = date(start_date.year, start_date.month, 1)
-    selected_month_date = date(selected_year, selected_month, 1)
-
-    return start_month_date <= selected_month_date and due_month_of_year == selected_month
-
 
 def get_visible_income_queryset(user, month, year):
-    incomes = Income.objects.filter(user=user, is_active=True)
-    visible_ids = []
-
-    for income in incomes:
-        if income.income_type == 'daily':
-            if income.income_date and income.income_date.month == month and income.income_date.year == year:
-                visible_ids.append(income.id)
-
-        elif income.income_type == 'monthly':
-            if is_monthly_visible(income.start_date, year, month):
-                visible_ids.append(income.id)
-
-        elif income.income_type == 'yearly':
-            if is_yearly_visible(income.start_date, income.due_month_of_year, year, month):
-                visible_ids.append(income.id)
-
-    return incomes.filter(id__in=visible_ids)
-
-
-def get_visible_expense_queryset(user, month, year):
-    expenses = Expense.objects.filter(user=user, is_active=True)
-    visible_ids = []
-
-    for expense in expenses:
-        if expense.expense_type == 'daily':
-            if expense.expense_date and expense.expense_date.month == month and expense.expense_date.year == year:
-                visible_ids.append(expense.id)
-
-        elif expense.expense_type == 'monthly':
-            if is_monthly_visible(expense.start_date, year, month):
-                visible_ids.append(expense.id)
-
-        elif expense.expense_type == 'yearly':
-            if is_yearly_visible(expense.start_date, expense.due_month_of_year, year, month):
-                visible_ids.append(expense.id)
-
-    return expenses.filter(id__in=visible_ids)
+    """
+    Rules:
+    - daily   -> exact month + year of income_date
+    - monthly -> exact month + year of start_date only
+    - yearly  -> all months of the same start_date year
+    """
+    return Income.objects.filter(
+        user=user,
+        is_active=True
+    ).filter(
+        Q(income_type='daily', income_date__year=year, income_date__month=month) |
+        Q(income_type='monthly', start_date__year=year, start_date__month=month) |
+        Q(income_type='yearly', start_date__year=year)
+    )
 
 
 class IncomeListCreateView(APIView):
@@ -1038,8 +997,27 @@ class IncomeListCreateView(APIView):
 
     def get(self, request):
         today = timezone.localdate()
-        month = int(request.query_params.get('month', today.month))
-        year = int(request.query_params.get('year', today.year))
+
+        try:
+            month = int(request.query_params.get('month', today.month))
+            year = int(request.query_params.get('year', today.year))
+        except (TypeError, ValueError):
+            return Response(
+                {
+                    "success": False,
+                    "message": "Month and year must be valid numbers."
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not (1 <= month <= 12):
+            return Response(
+                {
+                    "success": False,
+                    "message": "Month must be between 1 and 12."
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         incomes = get_visible_income_queryset(request.user, month, year)
 
@@ -1048,10 +1026,12 @@ class IncomeListCreateView(APIView):
 
         if income_type:
             incomes = incomes.filter(income_type=income_type)
+
         if category:
             incomes = incomes.filter(category=category)
 
-        serializer = IncomeSerializer(incomes.order_by('-id'), many=True)
+        incomes = incomes.order_by('-id')
+        serializer = IncomeSerializer(incomes, many=True)
 
         total_income = incomes.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
         monthly_income = incomes.filter(income_type='monthly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
@@ -1145,7 +1125,6 @@ class IncomeDetailView(APIView):
             "success": True,
             "message": "Income deleted successfully."
         }, status=status.HTTP_200_OK)
-
 
 class ExpenseListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]

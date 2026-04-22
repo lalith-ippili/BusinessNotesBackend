@@ -1359,14 +1359,26 @@ class FinanceDashboardView(APIView):
             "recent_expenses": ExpenseSerializer(expenses.order_by('-id')[:10], many=True).data
         }, status=status.HTTP_200_OK)
 
-
 class MonthlyBudgetView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         today = timezone.localdate()
-        month = int(request.query_params.get('month', today.month))
-        year = int(request.query_params.get('year', today.year))
+
+        try:
+            month = int(request.query_params.get('month', today.month))
+            year = int(request.query_params.get('year', today.year))
+        except (TypeError, ValueError):
+            return Response({
+                "success": False,
+                "message": "Month and year must be valid numbers."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if not (1 <= month <= 12):
+            return Response({
+                "success": False,
+                "message": "Month must be between 1 and 12."
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         incomes = get_visible_income_queryset(request.user, month, year)
         expenses = get_visible_expense_queryset(request.user, month, year)
@@ -1414,8 +1426,10 @@ class MonthlyBudgetView(APIView):
 
         return Response({
             "success": True,
-            "month": month,
-            "year": year,
+            "filters": {
+                "month": month,
+                "year": year
+            },
             "summary": {
                 "total_budget": total_income,
                 "total_spend": total_spend,
@@ -1428,7 +1442,6 @@ class MonthlyBudgetView(APIView):
             "by_category": by_category,
             "weekly_breakdown": weekly_breakdown
         }, status=status.HTTP_200_OK)
-
 
 #Day Calendar overview-----------------------------------------
 class CalendarDashboardView(APIView):

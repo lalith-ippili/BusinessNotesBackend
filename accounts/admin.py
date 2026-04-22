@@ -187,16 +187,20 @@ class IncomeAdmin(admin.ModelAdmin):
 @admin.register(Expense)
 class ExpenseAdmin(admin.ModelAdmin):
     list_display = (
-    'id',
-    'name',
-    'user',
-    'amount',
-    'category',
-    'expense_type',
-    'expense_date',
-    'is_paid',
-    'created_at',
+        'id',
+        'name',
+        'user',
+        'amount',
+        'category',
+        'expense_type',
+        'expense_date',
+        'start_date',
+        'due_day_of_month',
+        'due_month_of_year',
+        'is_paid',
+        'is_active',
+        'created_at',
     )
-    list_filter = ('category', 'expense_type', 'is_paid', 'expense_date')
+    list_filter = ('category', 'expense_type', 'is_paid', 'is_active')
     search_fields = ('name', 'notes', 'user__email', 'user__name')
-    ordering = ('-expense_date', '-id')
+    ordering = ('-id',)

@@ -335,7 +335,7 @@ class Expense(models.Model):
     # daily entry
     expense_date = models.DateField(null=True, blank=True)
 
-    # recurring entry
+    # monthly / yearly entry
     start_date = models.DateField(null=True, blank=True)
     due_day_of_month = models.PositiveSmallIntegerField(null=True, blank=True)
     due_month_of_year = models.PositiveSmallIntegerField(null=True, blank=True)
@@ -353,7 +353,47 @@ class Expense(models.Model):
     def __str__(self):
         return self.name
 
+    def clean(self):
+        if self.expense_type == 'daily':
+            if not self.expense_date:
+                raise ValidationError({"expense_date": "This field is required for daily expense."})
 
+        elif self.expense_type == 'monthly':
+            if not self.start_date:
+                raise ValidationError({"start_date": "This field is required for monthly expense."})
+            if self.due_day_of_month is None:
+                raise ValidationError({"due_day_of_month": "This field is required for monthly expense."})
+
+        elif self.expense_type == 'yearly':
+            if not self.start_date:
+                raise ValidationError({"start_date": "This field is required for yearly expense."})
+            if self.due_day_of_month is None:
+                raise ValidationError({"due_day_of_month": "This field is required for yearly expense."})
+            if self.due_month_of_year is None:
+                raise ValidationError({"due_month_of_year": "This field is required for yearly expense."})
+
+        if self.due_day_of_month is not None and not (1 <= self.due_day_of_month <= 31):
+            raise ValidationError({"due_day_of_month": "Due day of month must be between 1 and 31."})
+
+        if self.due_month_of_year is not None and not (1 <= self.due_month_of_year <= 12):
+            raise ValidationError({"due_month_of_year": "Due month of year must be between 1 and 12."})
+
+    def save(self, *args, **kwargs):
+        # Clear unused fields based on expense type
+        if self.expense_type == 'daily':
+            self.start_date = None
+            self.due_day_of_month = None
+            self.due_month_of_year = None
+
+        elif self.expense_type == 'monthly':
+            self.expense_date = None
+            self.due_month_of_year = None
+
+        elif self.expense_type == 'yearly':
+            self.expense_date = None
+
+        self.full_clean()
+        super().save(*args, **kwargs)
 
 
 

@@ -1126,13 +1126,53 @@ class IncomeDetailView(APIView):
             "message": "Income deleted successfully."
         }, status=status.HTTP_200_OK)
 
+
+
+#EXPENSEListCreateView--------------------------------------------
+
+def get_visible_expense_queryset(user, month, year):
+    """
+    Rules:
+    - daily   -> exact month + year of expense_date
+    - monthly -> exact month + year of start_date only
+    - yearly  -> all months of the same start_date year
+    """
+    return Expense.objects.filter(
+        user=user,
+        is_active=True
+    ).filter(
+        Q(expense_type='daily', expense_date__year=year, expense_date__month=month) |
+        Q(expense_type='monthly', start_date__year=year, start_date__month=month) |
+        Q(expense_type='yearly', start_date__year=year)
+    )
+
+
 class ExpenseListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         today = timezone.localdate()
-        month = int(request.query_params.get('month', today.month))
-        year = int(request.query_params.get('year', today.year))
+
+        try:
+            month = int(request.query_params.get('month', today.month))
+            year = int(request.query_params.get('year', today.year))
+        except (TypeError, ValueError):
+            return Response(
+                {
+                    "success": False,
+                    "message": "Month and year must be valid numbers."
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not (1 <= month <= 12):
+            return Response(
+                {
+                    "success": False,
+                    "message": "Month must be between 1 and 12."
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         expenses = get_visible_expense_queryset(request.user, month, year)
 
@@ -1142,15 +1182,18 @@ class ExpenseListCreateView(APIView):
 
         if expense_type:
             expenses = expenses.filter(expense_type=expense_type)
+
         if category:
             expenses = expenses.filter(category=category)
+
         if is_paid is not None:
             if is_paid.lower() == 'true':
                 expenses = expenses.filter(is_paid=True)
             elif is_paid.lower() == 'false':
                 expenses = expenses.filter(is_paid=False)
 
-        serializer = ExpenseSerializer(expenses.order_by('-id'), many=True)
+        expenses = expenses.order_by('-id')
+        serializer = ExpenseSerializer(expenses, many=True)
 
         total_expense = expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
         monthly_expense = expenses.filter(expense_type='monthly').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
@@ -1245,7 +1288,6 @@ class ExpenseDetailView(APIView):
             "success": True,
             "message": "Expense deleted successfully."
         }, status=status.HTTP_200_OK)
-
 
 class FinanceDashboardView(APIView):
     permission_classes = [permissions.IsAuthenticated]

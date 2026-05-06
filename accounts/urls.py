@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import RegisterView, LoginView,HabitTrackerListCreateView, HabitTrackerDetailView, ForgotPasswordView,GoalListCreateView,DayPlanListCreateView, DayPlanDetailView, GoalDetailView, ResetPasswordView,NoteListCreateView, NoteDetailView, ProfileView,TaskListCreateView, TaskDetailView, HomeDashboardView,PomodoroTimerListCreateView, PomodoroTimerDetailView, IncomeListCreateView,IncomeDetailView,ExpenseListCreateView,ExpenseDetailView,FinanceDashboardView,MonthlyBudgetView,CalendarDashboardView
+from .views import RegisterView,CalculatorHistoryListCreateView, CalculatorHistoryDetailView, LoginView,HabitTrackerListCreateView, HabitTrackerDetailView, ForgotPasswordView,GoalListCreateView,DayPlanListCreateView, DayPlanDetailView, GoalDetailView, ResetPasswordView,NoteListCreateView, NoteDetailView, ProfileView,TaskListCreateView, TaskDetailView, HomeDashboardView,PomodoroTimerListCreateView, PomodoroTimerDetailView, IncomeListCreateView,IncomeDetailView,ExpenseListCreateView,ExpenseDetailView,FinanceDashboardView,MonthlyBudgetView,CalendarDashboardView
 
 urlpatterns = [
 path('register/', RegisterView.as_view(), name='register'),
@@ -60,7 +60,10 @@ path('monthly-budget/', MonthlyBudgetView.as_view(), name='monthly-budget'),
 #CalendarDashboard------------------------------------------
 path('calendar-dashboard/', CalendarDashboardView.as_view(), name='calendar-dashboard'),
 
+# CalculatorHistoryList------------------------------------------
 
+path('calculator-history/', CalculatorHistoryListCreateView.as_view(), name='calculator-history-list-create'),
+path('calculator-history/<int:pk>/', CalculatorHistoryDetailView.as_view(), name='calculator-history-detail'),
 
 
 

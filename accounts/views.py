@@ -31,7 +31,8 @@ from .serializers import (
     IncomeSerializer, 
     ExpenseSerializer,
     HabitTrackerSerializer,
-    PomodoroTimerSerializer
+    PomodoroTimerSerializer,
+    CalculatorHistorySerializer
 )
 from .tokens import password_reset_token
 from .models import Task
@@ -41,6 +42,7 @@ from .models import DayPlan
 from .models import HabitTracker
 from .models import PomodoroTimer
 from .models import Income, Expense
+from .models import CalculatorHistory
 
 
 
@@ -1645,8 +1647,89 @@ class CalendarDashboardView(APIView):
             "calendar_days": [day_data for _, day_data in sorted_days]
         }, status=status.HTTP_200_OK)
 
+# CalculatorHistoryList---------------------------
+
+class CalculatorHistoryListCreateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        histories = CalculatorHistory.objects.filter(user=request.user)
+        serializer = CalculatorHistorySerializer(histories, many=True)
+        return Response({
+            "success": True,
+            "count": histories.count(),
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = CalculatorHistorySerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response({
+                "success": True,
+                "message": "Calculator record created successfully.",
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
+
+        return Response({
+            "success": False,
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 
+class CalculatorHistoryDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self, request, pk):
+        return get_object_or_404(CalculatorHistory, pk=pk, user=request.user)
+
+    def get(self, request, pk):
+        history = self.get_object(request, pk)
+        serializer = CalculatorHistorySerializer(history)
+        return Response({
+            "success": True,
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    def put(self, request, pk):
+        history = self.get_object(request, pk)
+        serializer = CalculatorHistorySerializer(history, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "success": True,
+                "message": "Calculator record updated successfully.",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+
+        return Response({
+            "success": False,
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        history = self.get_object(request, pk)
+        serializer = CalculatorHistorySerializer(history, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "success": True,
+                "message": "Calculator record partially updated successfully.",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+
+        return Response({
+            "success": False,
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        history = self.get_object(request, pk)
+        history.delete()
+        return Response({
+            "success": True,
+            "message": "Calculator record deleted successfully."
+        }, status=status.HTTP_200_OK)
 
 
 

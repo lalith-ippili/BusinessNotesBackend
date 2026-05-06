@@ -395,8 +395,27 @@ class Expense(models.Model):
         self.full_clean()
         super().save(*args, **kwargs)
 
+# CalculatorHistory-----------------
 
+class CalculatorHistory(models.Model):
+    user = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.CASCADE,
+        related_name='calculator_histories'
+    )
+    expression = models.CharField(max_length=500)
+    result = models.CharField(max_length=255)
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        ordering = ['-id']
+        verbose_name = 'Calculator History'
+        verbose_name_plural = 'Calculator Histories'
+
+    def __str__(self):
+        return f"{self.expression} = {self.result}"
 
 
 

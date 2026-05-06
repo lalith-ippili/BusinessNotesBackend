@@ -8,6 +8,8 @@ from .models import DayPlan
 from .models import Income, Expense
 from .models import HabitTracker
 from .models import PomodoroTimer
+from .models import CalculatorHistory
+
 
 
 @admin.register(User)
@@ -203,4 +205,13 @@ class ExpenseAdmin(admin.ModelAdmin):
     )
     list_filter = ('category', 'expense_type', 'is_paid', 'is_active')
     search_fields = ('name', 'notes', 'user__email', 'user__name')
+    ordering = ('-id',)
+
+
+
+
+@admin.register(CalculatorHistory)
+class CalculatorHistoryAdmin(admin.ModelAdmin):
+    list_display = ('id', 'expression', 'result', 'user', 'created_at')
+    search_fields = ('expression', 'result', 'notes', 'user__email', 'user__name')
     ordering = ('-id',)

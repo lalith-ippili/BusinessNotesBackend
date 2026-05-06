@@ -12,7 +12,7 @@ from .tokens import password_reset_token
 from .models import Income, Expense
 from .models import HabitTracker
 from .models import PomodoroTimer
-
+from .models import CalculatorHistory
 
 
 
@@ -487,6 +487,39 @@ class ExpenseSerializer(serializers.ModelSerializer):
             })
 
         return attrs
+
+
+
+# CalculatorHistorySerializer---------------------------
+
+class CalculatorHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CalculatorHistory
+        fields = [
+            'id',
+            'expression',
+            'result',
+            'notes',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

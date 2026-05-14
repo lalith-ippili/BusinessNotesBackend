@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import RegisterView,CalculatorHistoryListCreateView, CalculatorHistoryDetailView, LoginView,HabitTrackerListCreateView, HabitTrackerDetailView, ForgotPasswordView,GoalListCreateView,DayPlanListCreateView, DayPlanDetailView, GoalDetailView, ResetPasswordView,NoteListCreateView, NoteDetailView, ProfileView,TaskListCreateView, TaskDetailView, HomeDashboardView,PomodoroTimerListCreateView, PomodoroTimerDetailView, IncomeListCreateView,IncomeDetailView,ExpenseListCreateView,ExpenseDetailView,FinanceDashboardView,MonthlyBudgetView,CalendarDashboardView
+from .views import RegisterView,NotificationListCreateView,NotificationDetailView,NotificationCountView,NotificationMarkReadView,NotificationMarkAllReadView,CalculatorHistoryListCreateView, CalculatorHistoryDetailView, LoginView,HabitTrackerListCreateView, HabitTrackerDetailView, ForgotPasswordView,GoalListCreateView,DayPlanListCreateView, DayPlanDetailView, GoalDetailView, ResetPasswordView,NoteListCreateView, NoteDetailView, ProfileView,TaskListCreateView, TaskDetailView, HomeDashboardView,PomodoroTimerListCreateView, PomodoroTimerDetailView, IncomeListCreateView,IncomeDetailView,ExpenseListCreateView,ExpenseDetailView,FinanceDashboardView,MonthlyBudgetView,CalendarDashboardView
 
 urlpatterns = [
 path('register/', RegisterView.as_view(), name='register'),
@@ -65,7 +65,20 @@ path('calendar-dashboard/', CalendarDashboardView.as_view(), name='calendar-dash
 path('calculator-history/', CalculatorHistoryListCreateView.as_view(), name='calculator-history-list-create'),
 path('calculator-history/<int:pk>/', CalculatorHistoryDetailView.as_view(), name='calculator-history-detail'),
 
+# List all and Create new
+path('notifications/', NotificationListCreateView.as_view(), name='notification-list-create'),
 
+# Get Counts (Total and Unread)
+path('notifications/counts/', NotificationCountView.as_view(), name='notification-counts'),
+
+# Mark ALL as read
+path('notifications/mark-all-read/', NotificationMarkAllReadView.as_view(), name='notification-mark-all-read'),
+
+# Retrieve, Update, or Delete a specific notification
+path('notifications/<int:pk>/', NotificationDetailView.as_view(), name='notification-detail'),
+
+# Mark a specific notification as read
+path('notifications/<int:pk>/mark-read/', NotificationMarkReadView.as_view(), name='notification-mark-read'),
 
 
 

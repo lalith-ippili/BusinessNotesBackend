@@ -9,6 +9,7 @@ from .models import Income, Expense
 from .models import HabitTracker
 from .models import PomodoroTimer
 from .models import CalculatorHistory
+from .models import Notification
 
 
 
@@ -215,3 +216,13 @@ class CalculatorHistoryAdmin(admin.ModelAdmin):
     list_display = ('id', 'expression', 'result', 'user', 'created_at')
     search_fields = ('expression', 'result', 'notes', 'user__email', 'user__name')
     ordering = ('-id',)
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ['title', 'user', 'type', 'is_read', 'created_at']
+    list_filter = ['is_read', 'type', 'created_at']
+    search_fields = ['title', 'message', 'user__email', 'user__name']
+    
+    # Optional: Make it read-only in admin so staff don't accidentally mark things read
+    readonly_fields = ['created_at']

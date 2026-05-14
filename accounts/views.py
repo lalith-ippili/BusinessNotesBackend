@@ -1,5 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import generics, views, status
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import status, permissions
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
@@ -15,6 +18,7 @@ from collections import defaultdict
 from calendar import monthrange
 from datetime import date
 from django.db.models.functions import ExtractWeek
+from .models import Notification
 
 
 
@@ -32,7 +36,8 @@ from .serializers import (
     ExpenseSerializer,
     HabitTrackerSerializer,
     PomodoroTimerSerializer,
-    CalculatorHistorySerializer
+    CalculatorHistorySerializer,
+    NotificationSerializer
 )
 from .tokens import password_reset_token
 from .models import Task
@@ -1736,6 +1741,50 @@ class CalculatorHistoryDetailView(APIView):
 
 
 
+# 1. List and Create
+class NotificationListCreateView(generics.ListCreateAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user)
+
+# 2. Detail, Update, Delete
+class NotificationDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user)
+
+# 3. Get Counts
+class NotificationCountView(views.APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        queryset = Notification.objects.filter(user=request.user)
+        return Response({
+            'total_count': queryset.count(),
+            'unread_count': queryset.filter(is_read=False).count()
+        })
+
+# 4. Mark Single as Read
+class NotificationMarkReadView(views.APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        notification = get_object_or_404(Notification, pk=pk, user=request.user)
+        notification.is_read = True
+        notification.save()
+        return Response({'status': 'success', 'message': 'Notification marked as read'})
+
+# 5. Mark All as Read
+class NotificationMarkAllReadView(views.APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        return Response({'status': 'success', 'message': 'All notifications marked as read'})
 
 
 

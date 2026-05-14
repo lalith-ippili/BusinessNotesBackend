@@ -13,7 +13,7 @@ from .models import Income, Expense
 from .models import HabitTracker
 from .models import PomodoroTimer
 from .models import CalculatorHistory
-
+from .models import Notification
 
 
 
@@ -314,7 +314,6 @@ class PomodoroTimerSerializer(serializers.ModelSerializer):
 
 
 #IncomeSerializer------------------------
-
 class IncomeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Income
@@ -507,6 +506,24 @@ class CalculatorHistorySerializer(serializers.ModelSerializer):
 
 
 
+
+
+# NotificationSerializer---------------------------
+
+class NotificationSerializer(serializers.ModelSerializer):
+    # Format the date nicely for the frontend (e.g., "10 mins ago" logic can be done on frontend, 
+    # but we send a clean ISO timestamp from backend)
+    time = serializers.DateTimeField(source='created_at', read_only=True, format="%Y-%m-%dT%H:%M:%SZ")
+
+    class Meta:
+        model = Notification
+        fields = ['id', 'title', 'message', 'type', 'is_read', 'time']
+        read_only_fields = ['id', 'time']
+
+    def create(self, validated_data):
+        # Automatically set the user to the currently logged-in user
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
 
 
 

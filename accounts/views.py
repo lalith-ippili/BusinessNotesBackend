@@ -19,6 +19,15 @@ from calendar import monthrange
 from datetime import date
 from django.db.models.functions import ExtractWeek
 from .models import Notification
+from rest_framework.decorators import api_view, permission_classes
+from webpush import send_user_notification
+from .utils import create_and_send_notification 
+
+
+
+
+
+
 
 
 
@@ -1739,15 +1748,32 @@ class CalculatorHistoryDetailView(APIView):
 
 
 
-
-
 # 1. List and Create
 class NotificationListCreateView(generics.ListCreateAPIView):
     serializer_class = NotificationSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Notification.objects.filter(user=self.request.user)
+        return Notification.objects.filter(user=self.request.user).order_by('-time') # Good practice to order by newest
+
+    def perform_create(self, serializer):
+        # 1. Save the notification to the DB and attach the current user
+        notification = serializer.save(user=self.request.user)
+
+        # 2. Automatically send the PWA Push Notification upon creation
+        payload = {
+            "head": notification.title,
+            "body": notification.message,
+            "icon": "/vite.svg", # Path to your PWA icon in React public folder
+            "url": "/notifications"
+        }
+        try:
+            # Send the push using django-webpush
+            send_user_notification(user=self.request.user, payload=payload, ttl=1000)
+        except Exception as e:
+            # Catch exceptions so a push failure doesn't crash the API response
+            print(f"Failed to send push notification: {e}")
+
 
 # 2. Detail, Update, Delete
 class NotificationDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -1756,6 +1782,7 @@ class NotificationDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return Notification.objects.filter(user=self.request.user)
+
 
 # 3. Get Counts
 class NotificationCountView(views.APIView):
@@ -1768,6 +1795,7 @@ class NotificationCountView(views.APIView):
             'unread_count': queryset.filter(is_read=False).count()
         })
 
+
 # 4. Mark Single as Read
 class NotificationMarkReadView(views.APIView):
     permission_classes = [IsAuthenticated]
@@ -1778,17 +1806,43 @@ class NotificationMarkReadView(views.APIView):
         notification.save()
         return Response({'status': 'success', 'message': 'Notification marked as read'})
 
+
 # 5. Mark All as Read
 class NotificationMarkAllReadView(views.APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
-        return Response({'status': 'success', 'message': 'All notifications marked as read'})
+        # Update all unread notifications to read for this user
+        updated_count = Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        return Response({
+            'status': 'success', 
+            'message': f'{updated_count} notifications marked as read'
+        })
 
 
-
-
+# ---------------------------------------------------------
+# EXAMPLE: Triggering a notification from a custom action
+# ---------------------------------------------------------
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def some_action_view(request):
+    """
+    Example view where a user does something in the app 
+    (like paying a bill, uploading a file, etc.)
+    and you want to notify them upon success.
+    """
+    
+    # ... do your normal backend logic here (e.g., process a payment) ...
+    
+    # Use the utility function to save to DB AND send the push
+    create_and_send_notification(
+        user=request.user,
+        title="Action Successful",
+        message="Your recent action was completed successfully.",
+        notif_type="success"
+    )
+    
+    return Response({"status": "success", "message": "Action complete and notification sent!"})
 
 
 

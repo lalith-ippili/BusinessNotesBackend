@@ -50,7 +50,14 @@ INSTALLED_APPS = [
 'rest_framework_simplejwt',
 'accounts',
 "corsheaders",
+"webpush",
 ]
+
+WEBPUSH_SETTINGS = {
+    "VAPID_PUBLIC_KEY": "BOSfxNRfoeHWCvfjA_p848HTysadX4_6UtcAB8ZUNWBGciPYX-_Y8FhK8zNkKrvZdGg3c4dUFbfoDYNM7JGJfHQ",
+    "VAPID_PRIVATE_KEY": "UKI8mFSqfMP0A20LgxAOcIrRKS2L8_EWr5w9o040A3g",
+    "VAPID_ADMIN_EMAIL": "ippililalith@gmail.com"
+}
 
 CORS_ALLOWED_ORIGINS = [
 "http://localhost:8080",
@@ -165,4 +172,4 @@ SIMPLE_JWT = {
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'ippilikumar524@mail.com'
+DEFAULT_FROM_EMAIL = 'ippililalith@mail.com'

@@ -171,5 +171,8 @@ SIMPLE_JWT = {
 'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+# Add this near your other third-party configurations
+GOOGLE_OAUTH2_CLIENT_ID = "432869731754-s429r6jqrqveho50prlib9c5tgun359a.apps.googleusercontent.com"
+
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'ippililalith@mail.com'

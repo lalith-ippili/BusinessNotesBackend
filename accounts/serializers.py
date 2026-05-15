@@ -3,6 +3,11 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
+from google.oauth2 import id_token
+from django.conf import settings
+from google.auth.transport import requests as google_requests
+
+
 from .models import User
 from .models import Task
 from .models import Note
@@ -14,6 +19,58 @@ from .models import HabitTracker
 from .models import PomodoroTimer
 from .models import CalculatorHistory
 from .models import Notification
+
+
+
+
+
+
+
+
+
+
+
+
+class GoogleLoginSerializer(serializers.Serializer):
+    credential = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        credential = attrs.get('credential')
+
+        try:
+            # Verify the token with Google
+            idinfo = id_token.verify_oauth2_token(
+                credential, 
+                google_requests.Request(), 
+                settings.GOOGLE_OAUTH2_CLIENT_ID
+            )
+
+            # Extract user info from Google's payload
+            email = idinfo['email']
+            name = idinfo.get('name', 'Google User')
+            
+            # Check if user exists. If not, create a new one.
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={'name': name}
+            )
+
+            # If created via Google, they don't have a password. 
+            # set_unusable_password() ensures they can't login via normal email/password 
+            # unless they specifically set one later.
+            if created:
+                user.set_unusable_password()
+                # If your model requires image handling, you can also extract idinfo.get('picture') here
+                user.save()
+
+            if not user.is_active:
+                raise serializers.ValidationError("User account is inactive.")
+
+            attrs['user'] = user
+            return attrs
+
+        except ValueError:
+            raise serializers.ValidationError("Invalid or expired Google token.")
 
 
 

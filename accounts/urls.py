@@ -1,5 +1,5 @@
 from django.urls import path ,include
-from .views import RegisterView,NotificationListCreateView,NotificationDetailView,NotificationCountView,NotificationMarkReadView,NotificationMarkAllReadView,CalculatorHistoryListCreateView, CalculatorHistoryDetailView, LoginView,HabitTrackerListCreateView, HabitTrackerDetailView, ForgotPasswordView,GoalListCreateView,DayPlanListCreateView, DayPlanDetailView, GoalDetailView, ResetPasswordView,NoteListCreateView, NoteDetailView, ProfileView,TaskListCreateView, TaskDetailView, HomeDashboardView,PomodoroTimerListCreateView, PomodoroTimerDetailView, IncomeListCreateView,IncomeDetailView,ExpenseListCreateView,ExpenseDetailView,FinanceDashboardView,MonthlyBudgetView,CalendarDashboardView
+from .views import RegisterView,NotificationListCreateView,NotificationDetailView,NotificationCountView,NotificationMarkReadView,NotificationMarkAllReadView,CalculatorHistoryListCreateView, CalculatorHistoryDetailView, LoginView,HabitTrackerListCreateView, HabitTrackerDetailView, ForgotPasswordView,GoalListCreateView,DayPlanListCreateView, DayPlanDetailView, GoalDetailView, ResetPasswordView,NoteListCreateView, NoteDetailView, ProfileView,TaskListCreateView, TaskDetailView, HomeDashboardView,PomodoroTimerListCreateView, PomodoroTimerDetailView, IncomeListCreateView,IncomeDetailView,ExpenseListCreateView,ExpenseDetailView,FinanceDashboardView,MonthlyBudgetView,CalendarDashboardView,GoogleLoginView
 
 urlpatterns = [
 path('register/', RegisterView.as_view(), name='register'),
@@ -81,6 +81,7 @@ path('notifications/<int:pk>/', NotificationDetailView.as_view(), name='notifica
 path('notifications/<int:pk>/mark-read/', NotificationMarkReadView.as_view(), name='notification-mark-read'),
 
 path('api/webpush/', include('webpush.urls')),
+path('google-login/', GoogleLoginView.as_view(), name='google-login'),
 
 
 

@@ -46,7 +46,8 @@ from .serializers import (
     HabitTrackerSerializer,
     PomodoroTimerSerializer,
     CalculatorHistorySerializer,
-    NotificationSerializer
+    NotificationSerializer,
+    GoogleLoginSerializer
 )
 from .tokens import password_reset_token
 from .models import Task
@@ -100,6 +101,25 @@ class RegisterView(APIView):
             "errors": serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
+
+
+
+class GoogleLoginView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = GoogleLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.validated_data.get('user')
+        tokens = get_tokens_for_user(user)
+
+        return Response({
+            "success": True,
+            "message": "Google Login successful.",
+            "user": ProfileSerializer(user, context={'request': request}).data,
+            "tokens": tokens
+        }, status=status.HTTP_200_OK)
 
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -1754,7 +1774,10 @@ class NotificationListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Notification.objects.filter(user=self.request.user).order_by('-time') # Good practice to order by newest
+        # -------------------------------------------------------------
+        # FIXED HERE: Changed '-time' to '-created_at'
+        # -------------------------------------------------------------
+        return Notification.objects.filter(user=self.request.user).order_by('-created_at')
 
     def perform_create(self, serializer):
         # 1. Save the notification to the DB and attach the current user
@@ -1843,8 +1866,6 @@ def some_action_view(request):
     )
     
     return Response({"status": "success", "message": "Action complete and notification sent!"})
-
-
 
 
 
